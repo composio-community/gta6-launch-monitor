@@ -11,6 +11,6 @@ export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
   const sections = (params.get("sections") ?? "streamers").split(",").filter((s): s is Section => (SECTIONS as string[]).includes(s));
   return handle(async () =>
-    json(await getStreams({ force: params.get("force") === "1", snapshot: params.get("snapshot") === "1", sections })),
+    json(await getStreams({ force: params.get("force") === "1", sections })),
   );
 }

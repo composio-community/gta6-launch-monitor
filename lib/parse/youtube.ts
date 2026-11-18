@@ -47,7 +47,7 @@ export function parseScrapeCreatorsYouTube(data: unknown): LiveStream[] {
       title: cleanText(str(item.title)) || "Live stream",
       viewers,
       url: str(item.url) ?? `https://www.youtube.com/watch?v=${id}`,
-      thumbnail: str(item.thumbnail) ?? `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
+      thumbnail: str(item.thumbnail),
       avatar: str(channel?.thumbnail),
       language: null,
       tags: [],

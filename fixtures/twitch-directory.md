@@ -10,9 +10,7 @@ DropsEnabled
 
 FirstTime
 
-[![Photo mode tour of the beaches - vicecityvic](https://static-cdn.jtvnw.net/ttv-static/404_preview-640x360.jpg)\\
-\\
-LIVE\\
+[LIVE\\
 \\
 412K viewers](https://www.twitch.tv/vicecityvic)
 
@@ -28,9 +26,7 @@ Türkçe
 
 Chill
 
-[![Photo mode tour of the beaches - leonidalaura](https://static-cdn.jtvnw.net/ttv-static/404_preview-640x360.jpg)\\
-\\
-LIVE\\
+[LIVE\\
 \\
 322K viewers](https://www.twitch.tv/leonidalaura)
 
@@ -46,9 +42,7 @@ BlindPlaythrough
 
 Speedrun
 
-[![PRIMER DIRECTO GTA 6 \| CODIGOS PARA SEGUIDORES - palmtreepete](https://static-cdn.jtvnw.net/ttv-static/404_preview-640x360.jpg)\\
-\\
-LIVE\\
+[LIVE\\
 \\
 233K viewers](https://www.twitch.tv/palmtreepete)
 
@@ -64,9 +58,7 @@ Deutsch
 
 FirstTime
 
-[![GTA 6 DAY ONE: first time in Vice City - neonnoodle](https://static-cdn.jtvnw.net/ttv-static/404_preview-640x360.jpg)\\
-\\
-LIVE\\
+[LIVE\\
 \\
 145K viewers](https://www.twitch.tv/neonnoodle)
 
@@ -82,9 +74,7 @@ BlindPlaythrough
 
 FirstTime
 
-[![Photo mode tour of the beaches - oceandriveolly](https://static-cdn.jtvnw.net/ttv-static/404_preview-640x360.jpg)\\
-\\
-LIVE\\
+[LIVE\\
 \\
 118K viewers](https://www.twitch.tv/oceandriveolly)
 
@@ -100,9 +90,7 @@ Chill
 
 DropsEnabled
 
-[![GTA VI launch marathon [24h] - keyskaren](https://static-cdn.jtvnw.net/ttv-static/404_preview-640x360.jpg)\\
-\\
-LIVE\\
+[LIVE\\
 \\
 83.2K viewers](https://www.twitch.tv/keyskaren)
 
@@ -118,9 +106,7 @@ BlindPlaythrough
 
 Cozy
 
-[![GTA 6 DAY ONE: first time in Vice City - gatorgrace](https://static-cdn.jtvnw.net/ttv-static/404_preview-640x360.jpg)\\
-\\
-LIVE\\
+[LIVE\\
 \\
 54K viewers](https://www.twitch.tv/gatorgrace)
 
@@ -136,9 +122,7 @@ Español
 
 NoSpoilers
 
-[![Photo mode tour of the beaches - sunsetsamir](https://static-cdn.jtvnw.net/ttv-static/404_preview-640x360.jpg)\\
-\\
-LIVE\\
+[LIVE\\
 \\
 33.8K viewers](https://www.twitch.tv/sunsetsamir)
 
@@ -154,9 +138,7 @@ English
 
 Marathon
 
-[![Finding every secret in Leonida - miamimango](https://static-cdn.jtvnw.net/ttv-static/404_preview-640x360.jpg)\\
-\\
-LIVE\\
+[LIVE\\
 \\
 24.5K viewers](https://www.twitch.tv/miamimango)
 
@@ -172,9 +154,7 @@ English
 
 Speedrun
 
-[![Finding every secret in Leonida - pinkflamingotv](https://static-cdn.jtvnw.net/ttv-static/404_preview-640x360.jpg)\\
-\\
-LIVE\\
+[LIVE\\
 \\
 19.3K viewers](https://www.twitch.tv/pinkflamingotv)
 
@@ -190,9 +170,7 @@ Português
 
 Chill
 
-[![First heist with chat - grassriversgus](https://static-cdn.jtvnw.net/ttv-static/404_preview-640x360.jpg)\\
-\\
-LIVE\\
+[LIVE\\
 \\
 13.9K viewers](https://www.twitch.tv/grassriversgus)
 
@@ -208,9 +186,7 @@ NoSpoilers
 
 FirstTime
 
-[![Stealing every car in the city - portgellhornpaul](https://static-cdn.jtvnw.net/ttv-static/404_preview-640x360.jpg)\\
-\\
-LIVE\\
+[LIVE\\
 \\
 10.2K viewers](https://www.twitch.tv/portgellhornpaul)
 
@@ -226,9 +202,7 @@ Türkçe
 
 Speedrun
 
-[![First heist with chat - hamlethana](https://static-cdn.jtvnw.net/ttv-static/404_preview-640x360.jpg)\\
-\\
-LIVE\\
+[LIVE\\
 \\
 9.2K viewers](https://www.twitch.tv/hamlethana)
 
@@ -244,9 +218,7 @@ Français
 
 Chill
 
-[![Photo mode tour of the beaches - stiltssteve](https://static-cdn.jtvnw.net/ttv-static/404_preview-640x360.jpg)\\
-\\
-LIVE\\
+[LIVE\\
 \\
 6.1K viewers](https://www.twitch.tv/stiltssteve)
 
@@ -262,9 +234,7 @@ Italiano
 
 BlindPlaythrough
 
-[![First heist with chat - ambrosiaamy](https://static-cdn.jtvnw.net/ttv-static/404_preview-640x360.jpg)\\
-\\
-LIVE\\
+[LIVE\\
 \\
 4.1K viewers](https://www.twitch.tv/ambrosiaamy)
 
@@ -280,9 +250,7 @@ Español
 
 BlindPlaythrough
 
-[![Photo mode tour of the beaches - mountkalagamo](https://static-cdn.jtvnw.net/ttv-static/404_preview-640x360.jpg)\\
-\\
-LIVE\\
+[LIVE\\
 \\
 2.5K viewers](https://www.twitch.tv/mountkalagamo)
 
@@ -298,9 +266,7 @@ Português
 
 Speedrun
 
-[![Story mode start to finish - luciafanclub](https://static-cdn.jtvnw.net/ttv-static/404_preview-640x360.jpg)\\
-\\
-LIVE\\
+[LIVE\\
 \\
 2.2K viewers](https://www.twitch.tv/luciafanclub)
 
@@ -316,9 +282,7 @@ Türkçe
 
 FirstTime
 
-[![GTA VI launch marathon [24h] - jasonmains](https://static-cdn.jtvnw.net/ttv-static/404_preview-640x360.jpg)\\
-\\
-LIVE\\
+[LIVE\\
 \\
 2K viewers](https://www.twitch.tv/jasonmains)
 
@@ -334,9 +298,7 @@ Español
 
 BlindPlaythrough
 
-[![Story mode start to finish - boatshoesben](https://static-cdn.jtvnw.net/ttv-static/404_preview-640x360.jpg)\\
-\\
-LIVE\\
+[LIVE\\
 \\
 1.2K viewers](https://www.twitch.tv/boatshoesben)
 
@@ -352,9 +314,7 @@ NoSpoilers
 
 Chill
 
-[![Speedrun practice, any% - waveriderwes](https://static-cdn.jtvnw.net/ttv-static/404_preview-640x360.jpg)\\
-\\
-LIVE\\
+[LIVE\\
 \\
 1.2K viewers](https://www.twitch.tv/waveriderwes)
 
@@ -370,9 +330,7 @@ Deutsch
 
 NoSpoilers
 
-[![Finding every secret in Leonida - casinocassie](https://static-cdn.jtvnw.net/ttv-static/404_preview-640x360.jpg)\\
-\\
-LIVE\\
+[LIVE\\
 \\
 1.2K viewers](https://www.twitch.tv/casinocassie)
 
@@ -386,9 +344,7 @@ BlindPlaythrough
 
 Русский
 
-[![Photo mode tour of the beaches - hurricanehal](https://static-cdn.jtvnw.net/ttv-static/404_preview-640x360.jpg)\\
-\\
-LIVE\\
+[LIVE\\
 \\
 1.2K viewers](https://www.twitch.tv/hurricanehal)
 
@@ -402,9 +358,7 @@ Cozy
 
 English
 
-[![Exploring the Keys at sunset - swampsally](https://static-cdn.jtvnw.net/ttv-static/404_preview-640x360.jpg)\\
-\\
-LIVE\\
+[LIVE\\
 \\
 1.2K viewers](https://www.twitch.tv/swampsally)
 
@@ -420,9 +374,7 @@ Español
 
 Speedrun
 
-[![Photo mode tour of the beaches - coralcam](https://static-cdn.jtvnw.net/ttv-static/404_preview-640x360.jpg)\\
-\\
-LIVE\\
+[LIVE\\
 \\
 1.2K viewers](https://www.twitch.tv/coralcam)
 
@@ -438,9 +390,7 @@ Português
 
 Speedrun
 
-[![Photo mode tour of the beaches - pelicanpat](https://static-cdn.jtvnw.net/ttv-static/404_preview-640x360.jpg)\\
-\\
-LIVE\\
+[LIVE\\
 \\
 1.2K viewers](https://www.twitch.tv/pelicanpat)
 
@@ -456,9 +406,7 @@ Español
 
 FirstTime
 
-[![Speedrun practice, any% - tikitobi](https://static-cdn.jtvnw.net/ttv-static/404_preview-640x360.jpg)\\
-\\
-LIVE\\
+[LIVE\\
 \\
 1.2K viewers](https://www.twitch.tv/tikitobi)
 
@@ -474,9 +422,7 @@ Deutsch
 
 Cozy
 
-[![Exploring the Keys at sunset - bayfrontbea](https://static-cdn.jtvnw.net/ttv-static/404_preview-640x360.jpg)\\
-\\
-LIVE\\
+[LIVE\\
 \\
 1.2K viewers](https://www.twitch.tv/bayfrontbea)
 
@@ -492,9 +438,7 @@ Français
 
 Marathon
 
-[![Story mode start to finish - sprintersid](https://static-cdn.jtvnw.net/ttv-static/404_preview-640x360.jpg)\\
-\\
-LIVE\\
+[LIVE\\
 \\
 1.2K viewers](https://www.twitch.tv/sprintersid)
 
@@ -510,9 +454,7 @@ Português
 
 DropsEnabled
 
-[![Story mode start to finish - nitronat](https://static-cdn.jtvnw.net/ttv-static/404_preview-640x360.jpg)\\
-\\
-LIVE\\
+[LIVE\\
 \\
 1.2K viewers](https://www.twitch.tv/nitronat)
 
@@ -528,8 +470,6 @@ Italiano
 
 FirstTime
 
-[![Blind playthrough, no spoilers please - rooftoprio](https://static-cdn.jtvnw.net/ttv-static/404_preview-640x360.jpg)\\
-\\
-LIVE\\
+[LIVE\\
 \\
 1.2K viewers](https://www.twitch.tv/rooftoprio)

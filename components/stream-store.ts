@@ -16,7 +16,6 @@ export interface StreamState {
   loading: boolean;
   /** Set when the request to our own API failed (not a per-source failure). */
   error: string | null;
-  snapshot: boolean;
   auto: boolean;
   /** Wall clock, ticked by the store so "42s ago" labels stay current. 0 before hydration. */
   now: number;
@@ -39,7 +38,6 @@ const INITIAL: StreamState = {
   payload: null,
   loading: true,
   error: null,
-  snapshot: false,
   auto: true,
   now: 0,
   loadingMore: [],
@@ -78,18 +76,16 @@ async function errorText(response: Response, fallback: string): Promise<string> 
 async function load(force: boolean, urgent = false) {
   if (inflight && !force && !urgent) return;
   const seq = ++requestSeq;
-  const snapshot = state.snapshot;
   inflight = true;
   set({ loading: true });
   try {
     const query = new URLSearchParams();
-    if (snapshot) query.set("snapshot", "1");
     if (force) query.set("force", "1");
     query.set("sections", state.sections.join(","));
     const response = await fetch(`/api/streams?${query}`, { cache: "no-store" });
     if (!response.ok) throw new Error(await errorText(response, "Feed request failed"));
     const payload = (await response.json()) as StreamsPayload;
-    // A newer request (mode switch or manual refresh) supersedes this one.
+    // A newer request (a manual refresh or a load-more) supersedes this one.
     if (seq !== requestSeq) return;
     set({ payload, error: null, loading: false, now: Date.now() });
     followScoring(payload);
@@ -103,7 +99,7 @@ async function load(force: boolean, urgent = false) {
 
 /** While reactions are being scored, check back soon instead of waiting for the next 30s poll. */
 function followScoring(payload: StreamsPayload) {
-  if (scoringTimer || payload.snapshot || !(payload.scoring.running || payload.scoring.pending > 0)) return;
+  if (scoringTimer || !(payload.scoring.running || payload.scoring.pending > 0)) return;
   if (!state.sections.includes("reactions")) return;
   scoringTimer = setTimeout(() => {
     scoringTimer = null;
@@ -117,7 +113,7 @@ function followScoring(payload: StreamsPayload) {
  */
 async function loadMore(ids: SourceId[]) {
   const wanted = ids.filter((id) => !state.loadingMore.includes(id));
-  if (state.snapshot || wanted.length === 0) return;
+  if (wanted.length === 0) return;
   // Any poll already in flight may predate the new page; discard its result.
   requestSeq++;
   set({ loadingMore: [...state.loadingMore, ...wanted], moreError: null });
@@ -131,10 +127,8 @@ async function loadMore(ids: SourceId[]) {
     const payload = (await response.json()) as StreamsPayload;
     requestSeq++;
     inflight = false;
-    if (!state.snapshot) {
-      set({ payload, error: null, now: Date.now() });
-      followScoring(payload);
-    }
+    set({ payload, error: null, now: Date.now() });
+    followScoring(payload);
   } catch (error) {
     set({ moreError: error instanceof Error ? error.message : "Load more failed" });
   } finally {
@@ -150,9 +144,7 @@ function onKey(event: KeyboardEvent) {
   const key = event.key.toLowerCase();
   if (key === "1" || key === "2" || key === "3") streamStore.setTab(TABS[Number(key) - 1]);
   else if (key === "r") void load(true);
-  else if (key === "a" && !state.snapshot) set({ auto: !state.auto });
-  else if (key === "s") streamStore.setSnapshotMode(true);
-  else if (key === "x") streamStore.setSnapshotMode(false);
+  else if (key === "a") set({ auto: !state.auto });
 }
 
 function start() {
@@ -161,8 +153,8 @@ function start() {
   set({ now: Date.now() });
   if (!state.payload) void load(false);
   pollTimer = setInterval(() => {
-    // Snapshot data never changes, and a hidden tab should not spend money.
-    if (state.auto && !state.snapshot && document.visibilityState === "visible") void load(false);
+    // A hidden tab should not spend money.
+    if (state.auto && document.visibilityState === "visible") void load(false);
   }, POLL_MS);
   tickTimer = setInterval(() => set({ now: Date.now() }), TICK_MS);
 }
@@ -196,11 +188,6 @@ export const streamStore = {
     const opening = !state.sections.includes(section);
     set({ tab, sections: opening ? [...state.sections, section] : state.sections });
     // A newly opened section has nothing loaded yet: fetch now rather than at the next poll.
-    if (opening && !state.snapshot) void load(false, true);
-  },
-  setSnapshotMode(snapshot: boolean) {
-    if (snapshot === state.snapshot) return;
-    set({ snapshot, payload: null });
-    void load(true);
+    if (opening) void load(false, true);
   },
 };

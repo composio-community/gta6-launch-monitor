@@ -24,6 +24,6 @@ export async function POST(request: Request) {
     : ["streamers"];
   return handle(async () => {
     await loadMore([...new Set(ids)]);
-    return json(await getStreams({ force: false, snapshot: false, sections }));
+    return json(await getStreams({ force: false, sections }));
   });
 }

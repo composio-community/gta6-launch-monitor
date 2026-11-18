@@ -61,13 +61,13 @@ export function ReactionCard({ reaction: r, now }: { reaction: Reaction; now: nu
         {r.topic ? <span className="tag">{TOPIC_LABEL[r.topic]}</span> : null}
         {stats.length > 0 ? <span className="post-stats">{stats.join(" · ")}</span> : null}
       </div>
+      <span className="sr-only">(opens in a new tab)</span>
     </a>
   );
 }
 
 export function ScoringNotice({ payload }: { payload: StreamsPayload }) {
   const { scoring } = payload;
-  if (payload.snapshot) return null;
   if (scoring.pending > 0 || scoring.running) {
     return (
       <div className="notice scoring" role="status">
@@ -95,22 +95,21 @@ export function ReactionsView({
   now,
   statuses,
   loadingMore,
-  snapshot,
 }: {
   payload: StreamsPayload | null;
   now: number;
   statuses: Map<SourceId, SourceStatus>;
   loadingMore: SourceId[];
-  snapshot: boolean;
 }) {
   const [platform, setPlatform] = useState<ReactionPlatform | "all">("all");
   const [mood, setMood] = useState<MoodFilter>("all");
   const [topic, setTopic] = useState<Topic | "all">("all");
   const [sort, setSort] = useState<PostSort>("newest");
   const [query, setQuery] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const reactions = payload?.reactions ?? [];
-  const loaded = payload ? payload.snapshot || payload.sections.includes("reactions") : false;
+  const loaded = payload ? payload.sections.includes("reactions") : false;
   const needle = query.trim().toLowerCase();
   const searched = needle
     ? reactions.filter((r) => r.author.toLowerCase().includes(needle) || r.text.toLowerCase().includes(needle))
@@ -133,7 +132,11 @@ export function ReactionsView({
 
   return (
     <div className="layout">
-      <aside className="menu" aria-label="Reaction filters">
+      <aside className={filtersOpen ? "menu open" : "menu"} aria-label="Reaction filters">
+        <button type="button" className="menu-toggle" aria-expanded={filtersOpen} onClick={() => setFiltersOpen(!filtersOpen)}>
+          <span>Filters & sort</span>
+          <span>{platform === "all" ? "All platforms" : REACTION_LABEL[platform]}</span>
+        </button>
         <ul className="rows">
           <Row pressed={platform === "all"} onClick={() => setPlatform("all")} label="All platforms" count={searched.length} />
         </ul>
@@ -214,7 +217,10 @@ export function ReactionsView({
         {payload ? <ScoringNotice payload={payload} /> : null}
 
         {!loaded || (reactions.length === 0 && !payload?.sources.some((s) => s.source.startsWith("react-") && s.state !== "idle")) ? (
-          <div className="empty">Pulling reactions from X, Reddit, YouTube, Instagram and LinkedIn. About 20 seconds the first time.</div>
+          <div className="empty">
+            <i className="spinner" aria-hidden="true" />
+            Pulling reactions from X, Reddit, YouTube, Instagram and LinkedIn. About 20 seconds the first time.
+          </div>
         ) : visible.length === 0 ? (
           <div className="empty">{filtered ? "No reactions match these filters." : "No reactions came back. See Feeds below."}</div>
         ) : (
@@ -225,7 +231,7 @@ export function ReactionsView({
           </div>
         )}
 
-        {loaded && !snapshot ? (
+        {loaded ? (
           <LoadMore
             ids={platform === "all" ? REACTION_PLATFORMS.map(reactionSourceId) : [reactionSourceId(platform)]}
             statuses={statuses}
@@ -239,7 +245,7 @@ export function ReactionsView({
           <Feeds
             sources={payload.sources.filter((st) => st.source.startsWith("react-"))}
             now={now}
-            scoring={payload.snapshot ? undefined : payload.scoring}
+            scoring={payload.scoring}
           />
         ) : null}
       </main>

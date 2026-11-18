@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useSyncExternalStore, type ReactNode } from "react";
+import { useState, useSyncExternalStore, type KeyboardEvent, type ReactNode } from "react";
 import { ago, compactCount, usd } from "@/lib/format";
 import { POST_SORTS, sortPosts, type PostSort } from "@/lib/posts";
 import {
@@ -44,7 +44,7 @@ function Stars({ lit }: { lit: number }) {
   );
 }
 
-function Hud({ payload, totalViewers }: { payload: StreamsPayload | null; totalViewers: number }) {
+function Hud({ payload, totalViewers, children }: { payload: StreamsPayload | null; totalViewers: number; children?: ReactNode }) {
   const lit = HEAT_STEPS.filter((step) => totalViewers >= step).length;
   // The budget is spending on the signed-in account; without a sign-in there is nothing to show.
   const budget = payload?.signedIn ? payload.budget : null;
@@ -54,7 +54,7 @@ function Hud({ payload, totalViewers }: { payload: StreamsPayload | null; totalV
       <Stars lit={lit} />
       {budget && left !== null ? (
         <>
-          <div className="hud-cash" title="Composio Instant budget left for this server run">
+          <div className="hud-cash" title="Composio Instant spend left before the app stops calling tools for you">
             {usd(left)}
           </div>
           <div className="hud-label">Instant budget left</div>
@@ -75,6 +75,7 @@ function Hud({ payload, totalViewers }: { payload: StreamsPayload | null; totalV
           <button type="submit">Sign out</button>
         </form>
       ) : null}
+      {children}
     </aside>
   );
 }
@@ -120,6 +121,7 @@ function Card({ stream, rank }: { stream: LiveStream; rank: number | null }) {
           {stream.viewers === null ? null : <small>watching</small>}
         </span>
       </div>
+      <span className="sr-only">(opens in a new tab)</span>
       <div className="card-body">
         {stream.avatar ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -168,6 +170,7 @@ function PostCard({ post, now }: { post: SocialPost; now: number }) {
         {post.text}
       </p>
       {stats.length > 0 ? <div className="post-stats">{stats.join(" · ")}</div> : null}
+      <span className="sr-only">(opens in a new tab)</span>
     </a>
   );
 }
@@ -251,16 +254,13 @@ function SignIn({ error }: { error: string | null }) {
       ) : null}
       <div className="setup-actions">
         <a className="prompt big" href="/api/auth/login">
-          <kbd>↵</kbd> Sign in with Composio
+          <kbd aria-hidden="true">↵</kbd> Sign in with Composio
         </a>
-        <button type="button" className="prompt" onClick={() => streamStore.setSnapshotMode(true)}>
-          <kbd>S</kbd> Preview with demo data
-        </button>
       </div>
       <p className="setup-note">
         Streamers costs about $0.007 per refresh. Reactions and Sentiment load only once you open them, about $0.007
-        per refresh plus under $0.0001 per reaction scored. The app stops spending at $1.00 per server run unless you
-        change <code>INSTANT_BUDGET_USD</code>.
+        per refresh plus under $0.0001 per reaction scored. The app stops spending for you at $1.00 unless the site
+        owner sets <code>INSTANT_BUDGET_USD</code>.
       </p>
     </section>
   );
@@ -272,11 +272,22 @@ const TAB_LIST: { id: Tab; label: string }[] = [
   { id: "sentiment", label: "Sentiment" },
 ];
 
+/** Arrow keys move between tabs, as in any tablist. */
+function onTabKey(event: KeyboardEvent<HTMLDivElement>) {
+  if (event.key !== "ArrowRight" && event.key !== "ArrowLeft" && event.key !== "Home" && event.key !== "End") return;
+  event.preventDefault();
+  const current = TAB_LIST.findIndex((t) => t.id === streamStore.getSnapshot().tab);
+  const next =
+    event.key === "Home" ? 0 : event.key === "End" ? TAB_LIST.length - 1 : (current + (event.key === "ArrowRight" ? 1 : -1) + TAB_LIST.length) % TAB_LIST.length;
+  streamStore.setTab(TAB_LIST[next].id);
+  document.getElementById(`tab-${TAB_LIST[next].id}`)?.focus();
+}
+
 /** How many streams the combined view shows before "Show all". */
 const COLLAPSED_STREAMS = 24;
 
 export function StreamBoard() {
-  const { payload, loading, error, snapshot, auto, now, loadingMore, moreError, tab } = useSyncExternalStore(
+  const { payload, loading, error, auto, now, loadingMore, moreError, tab } = useSyncExternalStore(
     streamStore.subscribe,
     streamStore.getSnapshot,
     streamStore.getServerSnapshot,
@@ -287,6 +298,7 @@ export function StreamBoard() {
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState(false);
   const [postSort, setPostSort] = useState<PostSort>("newest");
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const streams = payload?.streams ?? [];
   const posts = payload?.posts ?? [];
@@ -331,7 +343,7 @@ export function StreamBoard() {
   const goingLive = posts.filter((p) => p.goingLive).length;
 
   const top = streams.find((s) => s.viewers !== null) ?? null;
-  const needsSetup = payload !== null && !payload.signedIn && !payload.snapshot;
+  const needsSetup = payload !== null && !payload.signedIn;
   const filtered = view !== "all" || activeLanguage !== "all" || needle !== "";
 
   const row = (id: View, label: string, count: number) => (
@@ -348,33 +360,46 @@ export function StreamBoard() {
 
   return (
     <div className="board">
-      <Hud payload={payload} totalViewers={totalViewers} />
+      <Hud payload={payload} totalViewers={totalViewers}>
+      <div className="prompts">
+        {loading ? (
+          <span className="loading" role="status">
+            <i className="spinner" aria-hidden="true" />
+            Pulling live feeds
+          </span>
+        ) : payload && !needsSetup ? (
+          <span className="updated">Updated {ago(payload.generatedAt, now)}</span>
+        ) : null}
+        {!needsSetup ? (
+          <>
+            <button type="button" className="prompt" aria-pressed={auto} onClick={() => streamStore.setAuto(!auto)}>
+              <kbd aria-hidden="true">A</kbd> Auto refresh {auto ? "on" : "off"}
+            </button>
+            <button type="button" className="prompt" onClick={streamStore.refresh} disabled={loading}>
+              <kbd aria-hidden="true">R</kbd> Refresh now
+            </button>
+          </>
+        ) : null}
+      </div>
+      </Hud>
 
-      <nav className="tabs" aria-label="Sections">
+      <div className="tabs" role="tablist" aria-label="Sections" onKeyDown={onTabKey}>
         {TAB_LIST.map((t, i) => (
           <button
             key={t.id}
+            id={`tab-${t.id}`}
             type="button"
+            role="tab"
             className={tab === t.id ? "tab active" : "tab"}
-            aria-current={tab === t.id ? "page" : undefined}
+            aria-selected={tab === t.id}
+            aria-controls="tab-panel"
+            tabIndex={tab === t.id ? 0 : -1}
             onClick={() => streamStore.setTab(t.id)}
           >
-            <kbd>{i + 1}</kbd> {t.label}
+            <kbd aria-hidden="true">{i + 1}</kbd> {t.label}
           </button>
         ))}
-      </nav>
-
-      {snapshot ? (
-        <div className="notice">
-          <span>
-            <b>Demo mode.</b> Made-up channels, posts and scores in the same shape as the real feeds. No Instant calls
-            are made and nothing here is real.
-          </span>
-          <button type="button" className="prompt" onClick={() => streamStore.setSnapshotMode(false)}>
-            <kbd>X</kbd> Exit demo
-          </button>
-        </div>
-      ) : null}
+      </div>
 
       {error ? (
         <div className="notice bad">
@@ -395,15 +420,20 @@ export function StreamBoard() {
         </div>
       ) : null}
 
+      <div id="tab-panel" role="tabpanel" aria-labelledby={`tab-${tab}`}>
       {needsSetup ? (
         <SignIn error={payload?.authError ?? null} />
       ) : tab === "reactions" ? (
-        <ReactionsView payload={payload} now={now} statuses={statuses} loadingMore={loadingMore} snapshot={snapshot} />
+        <ReactionsView payload={payload} now={now} statuses={statuses} loadingMore={loadingMore} />
       ) : tab === "sentiment" ? (
         <SentimentView payload={payload} now={now} />
       ) : (
         <div className="layout">
-          <aside className="menu" aria-label="Filters">
+          <aside className={filtersOpen ? "menu open" : "menu"} aria-label="Filters">
+            <button type="button" className="menu-toggle" aria-expanded={filtersOpen} onClick={() => setFiltersOpen(!filtersOpen)}>
+              <span>Filters & sort</span>
+              <span>{view === "all" ? "Everything" : PLATFORM_LABEL[view as Platform] ?? SOCIAL_LABEL[view as SocialPlatform]}</span>
+            </button>
             <ul className="rows">{row("all", "Everything", streams.length + posts.length)}</ul>
 
             <h2>Live streams</h2>
@@ -485,7 +515,7 @@ export function StreamBoard() {
                 }}
               >
                 <span className="stat-value">{payload ? posts.length : "--"}</span>
-                <span className="stat-label">Social posts{payload ? ` · ${goingLive} going live` : ""}</span>
+                <span className="stat-label">Social posts{payload ? ` · ${goingLive} live` : ""}</span>
               </a>
               <div className="stat wide">
                 <span className="stat-value">{top ? top.channel : "--"}</span>
@@ -496,7 +526,10 @@ export function StreamBoard() {
             </div>
 
             {payload === null ? (
-              <div className="empty">{error ? "No data yet." : "Pulling live feeds. The first load takes up to 30 seconds."}</div>
+              <div className="empty">
+                {error ? null : <i className="spinner" aria-hidden="true" />}
+                {error ? "No data yet." : "Pulling live feeds. The first load takes up to 30 seconds."}
+              </div>
             ) : null}
 
             {payload && showStreams ? (
@@ -515,7 +548,7 @@ export function StreamBoard() {
                     <button type="button" className="more" onClick={() => setExpanded(true)}>
                       Show all {matchingStreams.length} streams <small>already loaded · free</small>
                     </button>
-                  ) : snapshot ? null : (
+                  ) : (
                     <LoadMore
                       ids={view === "all" ? PLATFORMS : [view as Platform]}
                       statuses={statuses}
@@ -541,15 +574,13 @@ export function StreamBoard() {
                 onView={setView}
                 viewsHint={viewsHint}
                 footer={
-                  snapshot ? null : (
-                    <LoadMore
-                      ids={isSocial(view) ? [view] : SOCIAL_PLATFORMS}
-                      statuses={statuses}
-                      loadingMore={loadingMore}
-                      noun={isSocial(view) ? `${SOCIAL_LABEL[view]} posts` : "posts"}
-                      endNote="That's every post these feeds return for this search."
-                    />
-                  )
+                  <LoadMore
+                    ids={isSocial(view) ? [view] : SOCIAL_PLATFORMS}
+                    statuses={statuses}
+                    loadingMore={loadingMore}
+                    noun={isSocial(view) ? `${SOCIAL_LABEL[view]} posts` : "posts"}
+                    endNote="That's every post these feeds return for this search."
+                  />
                 }
               />
             ) : null}
@@ -557,27 +588,8 @@ export function StreamBoard() {
           </main>
         </div>
       )}
-
-      <div className="prompts">
-        {loading ? (
-          <span className="loading" role="status">
-            <i className="spinner" />
-            {snapshot ? "Loading demo" : "Pulling live feeds"}
-          </span>
-        ) : payload && !needsSetup ? (
-          <span className="updated">Updated {ago(payload.generatedAt, now)}</span>
-        ) : null}
-        {!needsSetup && !snapshot ? (
-          <>
-            <button type="button" className="prompt" aria-pressed={auto} onClick={() => streamStore.setAuto(!auto)}>
-              <kbd>A</kbd> Auto refresh {auto ? "on" : "off"}
-            </button>
-            <button type="button" className="prompt" onClick={streamStore.refresh} disabled={loading}>
-              <kbd>R</kbd> Refresh now
-            </button>
-          </>
-        ) : null}
       </div>
+
     </div>
   );
 }

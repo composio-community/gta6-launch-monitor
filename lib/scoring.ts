@@ -1,5 +1,3 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
 import { BudgetExceededError, describeError, runInstant } from "./instant.ts";
 import { findArray } from "./parse/util.ts";
 import { session } from "./session.ts";
@@ -23,8 +21,8 @@ export const SCORING_TOOL = "OPENAI_CREATE_DECISION";
 const MODEL = "gpt-6-luna";
 /** Larger batches (40 items, 80 questions) came back as "invalid decision response" on Nov 18, 2026. */
 const BATCH = 15;
-/** Batches scored per request, in parallel. */
-const BATCHES_PER_REQUEST = 3;
+/** Batches scored per call to scoreSome, in parallel. Each feed gets its own call as soon as it lands. */
+const BATCHES_PER_CALL = 3;
 /** A reaction that failed this many times is left unscored instead of being retried forever. */
 const MAX_ATTEMPTS = 2;
 /** Upper bound reserved against the spend cap per batch. */
@@ -40,14 +38,21 @@ export interface Score {
 interface ScoringState {
   scores: Map<string, Score>;
   attempts: Map<string, number>;
+  /** Reactions in a batch right now, so overlapping requests don't pay to score them twice. */
+  inFlight: Set<string>;
   /** Per visitor: their last batch's charge and error. */
   byVisitor: Map<string, { lastChargeUsd: number | null; error: string | null }>;
 }
 
 // Kept on globalThis so dev hot reloads don't drop it. Bump the key when the shape changes.
-const KEY = "__gtaScoring_v3";
+const KEY = "__gtaScoring_v4";
 const globalStore = globalThis as typeof globalThis & { [KEY]?: ScoringState };
-const state: ScoringState = (globalStore[KEY] ??= { scores: new Map(), attempts: new Map(), byVisitor: new Map() });
+const state: ScoringState = (globalStore[KEY] ??= {
+  scores: new Map(),
+  attempts: new Map(),
+  inFlight: new Set(),
+  byVisitor: new Map(),
+});
 
 export function moodOf(sentiment: number): Mood {
   if (sentiment <= -1.25) return "very-negative";
@@ -143,12 +148,19 @@ const visitor = () => {
 };
 
 async function scoreBatch(batch: Reaction[]): Promise<void> {
-  for (const r of batch) state.attempts.set(r.id, (state.attempts.get(r.id) ?? 0) + 1);
-  const result = await runInstant(SCORING_TOOL, buildDecision(batch), RESERVE_USD);
-  const scores = readDecision(result.data, batch);
-  if (scores.size === 0) throw new Error("Scoring returned no answers");
-  for (const [id, score] of scores) remember(id, score);
-  visitor().lastChargeUsd = result.chargeUsd;
+  for (const r of batch) {
+    state.attempts.set(r.id, (state.attempts.get(r.id) ?? 0) + 1);
+    state.inFlight.add(r.id);
+  }
+  try {
+    const result = await runInstant(SCORING_TOOL, buildDecision(batch), RESERVE_USD);
+    const scores = readDecision(result.data, batch);
+    if (scores.size === 0) throw new Error("Scoring returned no answers");
+    for (const [id, score] of scores) remember(id, score);
+    visitor().lastChargeUsd = result.chargeUsd;
+  } finally {
+    for (const r of batch) state.inFlight.delete(r.id);
+  }
 }
 
 /** Score a batch; if it fails, try its two halves once each. */
@@ -174,46 +186,37 @@ async function scoreWithRetry(batch: Reaction[]): Promise<void> {
   }
 }
 
-const needsScore = (r: Reaction) => !state.scores.has(r.id) && (state.attempts.get(r.id) ?? 0) < MAX_ATTEMPTS;
+const unscored = (r: Reaction) => !state.scores.has(r.id) && (state.attempts.get(r.id) ?? 0) < MAX_ATTEMPTS;
+const needsScore = (r: Reaction) => unscored(r) && !state.inFlight.has(r.id);
 
-/** Score up to a few batches of the reactions that have no score yet. */
+/** Score up to a few batches of the reactions that have no score yet and aren't being scored already. */
 export async function scoreSome(reactions: Iterable<Reaction>): Promise<void> {
-  const todo = [...reactions].filter(needsScore).slice(0, BATCH * BATCHES_PER_REQUEST);
+  const todo = [...reactions].filter(needsScore).slice(0, BATCH * BATCHES_PER_CALL);
   const batches: Reaction[][] = [];
   for (let i = 0; i < todo.length; i += BATCH) batches.push(todo.slice(i, i + BATCH));
   await Promise.all(batches.map(scoreWithRetry));
 }
 
 /** Attach stored scores. */
-export function withScores(reactions: Reaction[], extra?: Map<string, Score>): Reaction[] {
+export function withScores(reactions: Reaction[]): Reaction[] {
   return reactions.map((r) => {
-    const score = extra?.get(r.id) ?? state.scores.get(r.id);
+    const score = state.scores.get(r.id);
     if (!score) return r;
     return { ...r, sentiment: Math.round(score.sentiment * 100) / 100, mood: moodOf(score.sentiment), topic: score.topic };
   });
 }
 
-export function scoringStatus(reactions: Reaction[], snapshot: boolean): ScoringStatus {
+export function scoringStatus(reactions: Reaction[]): ScoringStatus {
   const scored = reactions.filter((r) => r.sentiment !== null).length;
   // Reactions that failed every attempt are not "pending": nothing more will happen to them.
-  const pending = snapshot ? 0 : reactions.filter((r) => r.sentiment === null && needsScore(r)).length;
-  const v = snapshot ? null : visitor();
+  const pending = reactions.filter((r) => r.sentiment === null && unscored(r)).length;
+  const v = visitor();
   return {
     scored,
     pending,
     running: false,
     tool: SCORING_TOOL,
-    lastChargeUsd: v?.lastChargeUsd ?? null,
-    error: v?.error ?? null,
+    lastChargeUsd: v.lastChargeUsd,
+    error: v.error,
   };
-}
-
-/** Scores saved with the demo fixtures, so demo mode shows sentiment without any calls. */
-export async function fixtureScores(): Promise<Map<string, Score>> {
-  try {
-    const raw = JSON.parse(await readFile(path.join(process.cwd(), "fixtures", "reaction-scores.json"), "utf8")) as Record<string, Score>;
-    return new Map(Object.entries(raw));
-  } catch {
-    return new Map();
-  }
 }

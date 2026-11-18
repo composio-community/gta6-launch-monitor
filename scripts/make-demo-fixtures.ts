@@ -1,6 +1,6 @@
-// Writes the demo fixtures in fixtures/: made-up channels, posts and comments in
-// the exact shapes the real tools return, so tests and demo mode run without
-// anyone's real data. Every name, post, link and number here is invented.
+// Writes the test fixtures in fixtures/: made-up channels, posts and comments in
+// the exact shapes the real tools return, so the tests run without anyone's
+// real data. Every name, post, link and number here is invented.
 // Usage: node scripts/make-demo-fixtures.ts
 import { writeFileSync } from "node:fs";
 
@@ -57,7 +57,7 @@ const viewersText = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(n >= 100_0
       [
         `[**${title}** \\\\\n\\\\\n${name}\\\\\n\\\\\nVerified](https://www.twitch.tv/${handle})`,
         ...tags,
-        `[![${title} - ${handle}](https://static-cdn.jtvnw.net/ttv-static/404_preview-640x360.jpg)\\\\\n\\\\\nLIVE\\\\\n\\\\\n${viewersText(viewers)} viewers](https://www.twitch.tv/${handle})`,
+        `[LIVE\\\\\n\\\\\n${viewersText(viewers)} viewers](https://www.twitch.tv/${handle})`,
       ].join("\n\n"),
     );
     viewers = Math.max(1200, Math.round(viewers * (0.62 + rand() * 0.3)));
@@ -292,32 +292,23 @@ function instagram(captions: string[], startMins: number, withLikes: boolean) {
 }
 
 // ---------- Reactions ----------
-const scores: Record<string, { sentiment: number; topic: string }> = {};
-const SENTIMENT = { "very-positive": 1.7, positive: 0.9, neutral: 0, negative: -0.8, "very-negative": -1.6 } as const;
-function score(id: string, s: Seed) {
-  scores[id] = { sentiment: Math.round((SENTIMENT[s.mood] + (rand() - 0.5) * 0.3) * 100) / 100, topic: s.topic };
-}
 const reactionSet = (n: number) => Array.from({ length: n }, () => pick(REACTIONS));
 
 {
   const xs = reactionSet(20);
   const x = xSearch(xs.map((s) => s.text), 1, 4000);
-  x.output.data.items.forEach((item, i) => score(`react-x:${item.id}`, xs[i]));
   write("reactions-x.json", x);
 
   const rs = reactionSet(15);
   const r = reddit(rs.map((s) => ({ title: s.text, body: null })), () => "GTA6", 15);
-  r.items.forEach((item, i) => score(`react-reddit:${item.id}`, rs[i]));
   write("reactions-reddit.json", { cached: null, cached_at: null, ...r });
 
   const is = reactionSet(10);
   const ig = instagram(is.map((s) => s.text), 60 * 24 * 3, true);
-  ig.output.data.posts.forEach((p, i) => score(`react-instagram:${p.id}`, is[i]));
   write("reactions-instagram.json", ig);
 
   const ls = reactionSet(10);
   const li = linkedin(ls.map((s) => s.text), 90);
-  li.items.forEach((p, i) => score(`react-linkedin:${p.url.replace(/^https?:\/\/[^/]+/, "")}`, ls[i]));
   write("reactions-linkedin.json", li);
 
   // Search results include uploads about other GTA games, which the parser must skip.
@@ -363,7 +354,6 @@ const reactionSet = (n: number) => Array.from({ length: n }, () => pick(REACTION
         nextCursor: "demo-cursor-comments-2",
         comments: cs.map((s, i) => {
           const id = `DemoComment${idOf(i, 3)}`;
-          score(`react-youtube:${id}`, s);
           return {
             id,
             author: `@${slug(authorOf(i + 29))}`,
@@ -380,5 +370,4 @@ const reactionSet = (n: number) => Array.from({ length: n }, () => pick(REACTION
   });
 }
 
-write("reaction-scores.json", scores);
-console.log(`wrote demo fixtures; ${Object.keys(scores).length} demo scores`);
+console.log("wrote test fixtures");

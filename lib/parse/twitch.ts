@@ -55,7 +55,8 @@ export function parseTwitchMarkdown(markdown: string): LiveStream[] {
       title: title || `${channel} is live`,
       viewers: parseCount(viewersText),
       url: `https://www.twitch.tv/${handle}`,
-      thumbnail: thumb ?? `https://static-cdn.jtvnw.net/previews-ttv/live_user_${key}-640x360.jpg`,
+      // No guessed URL when the card has none: Twitch serves a "404" image for it, worse than the styled fallback.
+      thumbnail: thumb,
       avatar,
       language,
       tags: tags.slice(0, 4),

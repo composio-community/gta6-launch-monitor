@@ -1,13 +1,18 @@
 "use client";
 
-import { useState, type PointerEvent } from "react";
-import { MIN_PER_HOUR, MOOD_LABEL, summarize, TOPIC_LABEL, verdict, type HourBucket, type MoodSplit } from "@/lib/sentiment";
+import { useState } from "react";
+import { MOOD_LABEL, summarize, TOPIC_LABEL, verdict, type MoodSplit, type Timeline, type TimeBucket } from "@/lib/sentiment";
 import { MOODS, type Mood, type StreamsPayload, type Topic } from "@/lib/types";
 import { ReactionCard, ScoringNotice, signed } from "./ReactionsView";
 import { REACTION_LABEL } from "./shared";
 
 const pct = (n: number, total: number) => (total === 0 ? 0 : (n / total) * 100);
 const fmtPct = (n: number, total: number) => `${Math.round(pct(n, total))}%`;
+const positive = (s: MoodSplit) => s.counts.positive + s.counts["very-positive"];
+const negative = (s: MoodSplit) => s.counts.negative + s.counts["very-negative"];
+
+/** "12 positive, 5 neutral, 3 negative": every count, for tooltips and accessible names. */
+const breakdown = (s: MoodSplit) => `${positive(s)} positive, ${s.counts.neutral} neutral, ${negative(s)} negative`;
 
 /** One whole, split into the five moods: a tall segmented bar with shares printed where they fit. */
 function MoodBar({ split }: { split: MoodSplit }) {
@@ -15,14 +20,7 @@ function MoodBar({ split }: { split: MoodSplit }) {
     <div className="moodbar" role="img" aria-label={MOODS.map((m) => `${MOOD_LABEL[m]} ${fmtPct(split.counts[m], split.total)}`).join(", ")}>
       {MOODS.map((m) =>
         split.counts[m] === 0 ? null : (
-          <span
-            key={m}
-            className="seg"
-            data-mood={m}
-            style={{ flexGrow: split.counts[m] }}
-            tabIndex={0}
-            data-tip={`${MOOD_LABEL[m]}: ${split.counts[m]} (${fmtPct(split.counts[m], split.total)})`}
-          >
+          <span key={m} className="seg" data-mood={m} style={{ flexGrow: split.counts[m] }} title={`${MOOD_LABEL[m]}: ${split.counts[m]}`}>
             {pct(split.counts[m], split.total) >= 8 ? fmtPct(split.counts[m], split.total) : null}
           </span>
         ),
@@ -44,52 +42,40 @@ function MoodLegend() {
 }
 
 /**
- * A row of a diverging stacked bar, centred on neutral: negative moods grow
- * left from the centre line, positive right, neutral split across it. `scale`
- * is the largest one-side share across all rows, so rows compare on one axis.
+ * A diverging stacked bar centred on neutral: negative moods grow left from
+ * the centre line, positive right, neutral split across it. `scale` is the
+ * largest share each side reaches across all rows, so every row reads on one
+ * axis and the longest bar on each side reaches its end of the track.
  */
-function DivergingBar({ split, scale, label }: { split: MoodSplit; scale: number; label: string }) {
+function DivergingBar({ split, left, right }: { split: MoodSplit; left: number; right: number }) {
   const c = split.counts;
-  const t = split.total;
-  const w = (n: number) => `${(pct(n, t) / scale) * 50}%`;
-  const seg = (m: Mood, n: number, key: string) =>
-    n === 0 ? null : (
-      <span
-        key={key}
-        className="seg"
-        data-mood={m}
-        style={{ width: w(n) }}
-        tabIndex={0}
-        data-tip={`${label} · ${MOOD_LABEL[m]}: ${c[m]} (${fmtPct(c[m], t)})`}
-      />
-    );
+  const seg = (m: Mood, n: number, key: string, side: number) =>
+    n === 0 ? null : <span key={key} className="seg" data-mood={m} style={{ width: `${(pct(n, split.total) / side) * 100}%` }} />;
   return (
-    <div className="diverging" aria-hidden="true">
+    <div className="diverging" aria-hidden="true" style={{ gridTemplateColumns: `${left}fr ${right}fr` }}>
       <div className="half left">
-        {seg("very-negative", c["very-negative"], "vn")}
-        {seg("negative", c.negative, "n")}
-        {seg("neutral", c.neutral / 2, "zl")}
+        {seg("very-negative", c["very-negative"], "vn", left)}
+        {seg("negative", c.negative, "n", left)}
+        {seg("neutral", c.neutral / 2, "zl", left)}
       </div>
       <div className="half right">
-        {seg("neutral", c.neutral / 2, "zr")}
-        {seg("positive", c.positive, "p")}
-        {seg("very-positive", c["very-positive"], "vp")}
+        {seg("neutral", c.neutral / 2, "zr", right)}
+        {seg("positive", c.positive, "p", right)}
+        {seg("very-positive", c["very-positive"], "vp", right)}
       </div>
     </div>
   );
 }
 
-const sideShare = (s: MoodSplit) =>
-  Math.max(
-    pct(s.counts["very-negative"] + s.counts.negative + s.counts.neutral / 2, s.total),
-    pct(s.counts["very-positive"] + s.counts.positive + s.counts.neutral / 2, s.total),
-  );
+const leftShare = (s: MoodSplit) => pct(negative(s) + s.counts.neutral / 2, s.total);
+const rightShare = (s: MoodSplit) => pct(positive(s) + s.counts.neutral / 2, s.total);
 
-function MoodTable({ rows }: { rows: { label: string; split: MoodSplit }[] }) {
+function MoodTable({ caption, rows }: { caption: string; rows: { label: string; split: MoodSplit }[] }) {
   return (
     <details className="table-view">
       <summary>Show as table</summary>
       <table>
+        <caption className="sr-only">{caption}</caption>
         <thead>
           <tr>
             <th scope="col">Group</th>
@@ -119,98 +105,77 @@ function MoodTable({ rows }: { rows: { label: string; split: MoodSplit }[] }) {
   );
 }
 
-const W = 720;
-const H = 230;
-const PAD = { top: 16, right: 16, bottom: 28, left: 44 };
-const VOL_H = 46;
+const clock = (t: number, withMinutes: boolean) =>
+  new Date(t).toLocaleTimeString([], withMinutes ? { hour: "numeric", minute: "2-digit" } : { hour: "numeric" });
+const bucketLabel = (b: TimeBucket, ms: number) => {
+  const withMinutes = ms < 60 * 60 * 1000;
+  return `${clock(b.start, withMinutes)} – ${clock(b.end, withMinutes)}`;
+};
 
-const hourLabel = (t: number) => new Date(t).toLocaleTimeString([], { hour: "numeric" });
+/** Round up to a clean, even axis value just above n (2, 4, 6, 8, 10, 12, 16, 20, 30, 40...), so its half is whole too. */
+function niceCeil(n: number): number {
+  if (n <= 2) return 2;
+  const p = 10 ** Math.floor(Math.log10(n));
+  return [1, 1.2, 1.6, 2, 3, 4, 6, 8, 10].map((m) => Math.round(m * p)).find((v) => v >= n && v % 2 === 0) ?? 10 * p;
+}
 
-/** Net mood per hour over the last 24 hours: one line against a zero baseline, volume beneath on its own scale. */
-function Timeline({ hours }: { hours: HourBucket[] }) {
-  const [hover, setHover] = useState<number | null>(null);
-  const innerW = W - PAD.left - PAD.right;
-  const innerH = H - PAD.top - PAD.bottom;
-  const x = (i: number) => PAD.left + (hours.length <= 1 ? innerW / 2 : (i / (hours.length - 1)) * innerW);
-  const y = (net: number) => PAD.top + ((100 - net) / 200) * innerH;
-  const maxVol = Math.max(1, ...hours.map((h) => h.total));
+/**
+ * Mood over time as diverging columns: positive reactions stack up from the
+ * line, negative ones down, neutral split across it. Column height is volume,
+ * so a quiet hour can't look as loud as a busy one, and empty buckets just
+ * leave a gap. Each column is focusable and names its own counts.
+ */
+function MoodColumns({ tl }: { tl: Timeline }) {
+  const sides = tl.buckets.map((b) => ({ up: positive(b) + b.counts.neutral / 2, down: negative(b) + b.counts.neutral / 2 }));
+  const max = niceCeil(Math.max(1, ...sides.flatMap((s) => [s.up, s.down])));
+  const h = (n: number) => `${(n / max) * 100}%`;
+  const labelEvery = Math.max(1, Math.ceil(tl.buckets.length / 6));
+  const withMinutes = tl.bucketMs < 60 * 60 * 1000;
+  const last = tl.buckets.length - 1;
 
-  // Break the line where an hour has no scored reactions.
-  const runs: { i: number; net: number }[][] = [];
-  hours.forEach((h, i) => {
-    if (h.net === null || h.total < MIN_PER_HOUR) {
-      runs.push([]);
-      return;
-    }
-    if (runs.length === 0) runs.push([]);
-    runs[runs.length - 1].push({ i, net: h.net });
-  });
-
-  const onMove = (e: PointerEvent<SVGSVGElement>) => {
-    const box = e.currentTarget.getBoundingClientRect();
-    const px = ((e.clientX - box.left) / box.width) * W;
-    const i = Math.round(((px - PAD.left) / innerW) * (hours.length - 1));
-    setHover(Math.max(0, Math.min(hours.length - 1, i)));
-  };
-
-  const h = hover === null ? null : hours[hover];
   return (
-    <div className="timeline">
-      <svg
-        viewBox={`0 0 ${W} ${H + VOL_H}`}
-        role="img"
-        aria-label="Net mood per hour over the last 24 hours"
-        onPointerMove={onMove}
-        onPointerLeave={() => setHover(null)}
-      >
-        {[100, 50, 0, -50, -100].map((v) => (
-          <g key={v}>
-            <line className={v === 0 ? "axis zero" : "axis"} x1={PAD.left} x2={W - PAD.right} y1={y(v)} y2={y(v)} />
-            <text className="tick" x={PAD.left - 8} y={y(v) + 4} textAnchor="end">
-              {v > 0 ? `+${v}` : v}
-            </text>
-          </g>
-        ))}
-        {hours.map((b, i) =>
-          i % 4 === 0 ? (
-            <text key={b.start} className="tick" x={x(i)} y={H - 8} textAnchor="middle">
-              {hourLabel(b.start)}
-            </text>
-          ) : null,
-        )}
-        {runs
-          .filter((r) => r.length > 0)
-          .map((run) => (
-            <polyline key={run[0].i} className="line" points={run.map((p) => `${x(p.i)},${y(p.net)}`).join(" ")} />
-          ))}
-        {runs.flat().map((p) => (
-          <circle key={p.i} className="dot" cx={x(p.i)} cy={y(p.net)} r={hover === p.i ? 6 : 4} />
-        ))}
-        {/* Volume strip: its own small scale, labelled, not a second axis on the line. */}
-        {hours.map((b, i) => {
-          const bh = (b.total / maxVol) * (VOL_H - 14);
-          return b.total === 0 ? null : (
-            <rect key={b.start} className="vol" x={x(i) - 6} y={H + VOL_H - bh} width={12} height={bh} rx={2} />
+    <div className="cols-chart">
+      <div className="cols-axis" aria-hidden="true">
+        <span>{max}</span>
+        <span>{max / 2}</span>
+        <span>0</span>
+        <span>{max / 2}</span>
+        <span>{max}</span>
+      </div>
+      <div className="cols-plot" role="group" aria-label="Reactions per time bucket. Focus a column for its counts.">
+        {tl.buckets.map((b, i) => {
+          const tip = b.total === 0 ? `${bucketLabel(b, tl.bucketMs)}: no scored reactions` : `${bucketLabel(b, tl.bucketMs)}: net ${signed(b.net)}, ${breakdown(b)}`;
+          return (
+            <div
+              key={b.start}
+              className="col"
+              role="img"
+              tabIndex={b.total === 0 ? -1 : 0}
+              aria-label={tip}
+              data-tip={b.total === 0 ? undefined : tip}
+              data-tip-align={i < 2 ? "start" : i > last - 2 ? "end" : undefined}
+            >
+              <div className="col-half up">
+                {b.counts["very-positive"] ? <span className="seg" data-mood="very-positive" style={{ height: h(b.counts["very-positive"]) }} /> : null}
+                {b.counts.positive ? <span className="seg" data-mood="positive" style={{ height: h(b.counts.positive) }} /> : null}
+                {b.counts.neutral ? <span className="seg" data-mood="neutral" style={{ height: h(b.counts.neutral / 2) }} /> : null}
+              </div>
+              <div className="col-half down">
+                {b.counts.neutral ? <span className="seg" data-mood="neutral" style={{ height: h(b.counts.neutral / 2) }} /> : null}
+                {b.counts.negative ? <span className="seg" data-mood="negative" style={{ height: h(b.counts.negative) }} /> : null}
+                {b.counts["very-negative"] ? <span className="seg" data-mood="very-negative" style={{ height: h(b.counts["very-negative"]) }} /> : null}
+              </div>
+            </div>
           );
         })}
-        <text className="tick" x={PAD.left - 8} y={H + 14} textAnchor="end">
-          {maxVol}
-        </text>
-        {hover !== null ? <line className="crosshair" x1={x(hover)} x2={x(hover)} y1={PAD.top} y2={H + VOL_H} /> : null}
-      </svg>
-      <div className="timeline-key">
-        <span>Net mood (% positive minus % negative)</span>
-        <span>Bars: reactions scored that hour (top of scale: {maxVol})</span>
-        <span>Hours with fewer than {MIN_PER_HOUR} show volume only</span>
       </div>
-      {h ? (
-        <div className="tooltip" style={{ left: `${(x(hover as number) / W) * 100}%` }}>
-          <strong>{h.net === null ? "No scored reactions" : h.total < MIN_PER_HOUR ? "Too few to call" : `${signed(h.net)} net`}</strong>
-          <span>
-            {hourLabel(h.start)} · {h.total} {h.total === 1 ? "reaction" : "reactions"}
+      <div className="cols-x" aria-hidden="true">
+        {tl.buckets.map((b, i) => (
+          <span key={b.start}>
+            {i % labelEvery === 0 || (i === last && last % labelEvery >= Math.ceil(labelEvery / 2)) ? clock(b.start, withMinutes) : ""}
           </span>
-        </div>
-      ) : null}
+        ))}
+      </div>
     </div>
   );
 }
@@ -218,18 +183,23 @@ function Timeline({ hours }: { hours: HourBucket[] }) {
 export function SentimentView({ payload, now }: { payload: StreamsPayload | null; now: number }) {
   const [topic, setTopic] = useState<Topic | null>(null);
   const reactions = payload?.reactions ?? [];
-  const loaded = payload ? payload.snapshot || payload.sections.includes("reactions") : false;
-  const sum = summarize(reactions, now || Date.now());
-  const quotes = topic ? summarize(reactions.filter((r) => r.topic === topic), now || Date.now()) : sum;
+  const loaded = payload ? payload.sections.includes("reactions") : false;
+  const clockNow = now || Date.now();
+  const sum = summarize(reactions, clockNow);
+  const quotes = topic ? summarize(reactions.filter((r) => r.topic === topic), clockNow) : sum;
   const platformRows = sum.byPlatform.filter((p) => p.total > 0);
-  const platformScale = Math.max(1, ...platformRows.map(sideShare));
-  const hoursWithData = sum.hours.filter((b) => b.total >= MIN_PER_HOUR).length;
+  const leftMax = Math.max(1, ...platformRows.map(leftShare));
+  const rightMax = Math.max(1, ...platformRows.map(rightShare));
+  const topTopic = Math.max(1, ...sum.byTopic.map((t) => t.total));
+  const tl = sum.timeline;
+  const inWindow = tl.buckets.reduce((n, b) => n + b.total, 0);
 
   if (!loaded || sum.overall.total === 0) {
     return (
       <div className="sentiment">
         {payload ? <ScoringNotice payload={payload} /> : null}
         <div className="empty">
+          <i className="spinner" aria-hidden="true" />
           {loaded && reactions.length > 0
             ? "Reactions are in. Scoring the first batch takes about 10 seconds."
             : "Pulling reactions and scoring them. About 30 seconds the first time."}
@@ -251,15 +221,53 @@ export function SentimentView({ payload, now }: { payload: StreamsPayload | null
           </h2>
           <div className="hero-figure">{signed(o.net)}</div>
           <div className="hero-verdict">{verdict(o.net)}</div>
-          <p className="hero-caption">
-            Net mood across {o.total} scored reactions: {fmtPct(o.counts.positive + o.counts["very-positive"], o.total)} positive,{" "}
-            {fmtPct(o.counts.negative + o.counts["very-negative"], o.total)} negative.
-          </p>
+          <p className="hero-caption">Net mood: the share of positive reactions minus the share of negative ones, from -100 to +100.</p>
         </div>
         <div className="hero-split">
+          <div className="hero-stats">
+            <div>
+              <span className="hero-stat">{o.total}</span>
+              <span className="stat-label">Reactions scored</span>
+            </div>
+            <div>
+              <span className="hero-stat">{fmtPct(positive(o), o.total)}</span>
+              <span className="stat-label">Positive</span>
+            </div>
+            <div>
+              <span className="hero-stat">{fmtPct(o.counts.neutral, o.total)}</span>
+              <span className="stat-label">Neutral</span>
+            </div>
+            <div>
+              <span className="hero-stat">{fmtPct(negative(o), o.total)}</span>
+              <span className="stat-label">Negative</span>
+            </div>
+          </div>
           <MoodBar split={o} />
           <MoodLegend />
         </div>
+      </section>
+
+      <section className="panel" aria-labelledby="time-title">
+        <h2 id="time-title" className="panel-title">
+          Mood over time
+        </h2>
+        <p className="panel-sub">
+          Reactions by when they were posted, {tl.bucketMs < 3_600_000 ? `${tl.bucketMs / 60_000} minutes` : `${tl.bucketMs / 3_600_000} hour${tl.bucketMs > 3_600_000 ? "s" : ""}`} per
+          column. Positive stack up, negative down, neutral sits across the line.
+          {tl.outside > 0 ? ` ${tl.outside} older reactions are left out.` : ""}
+        </p>
+        {inWindow >= 3 ? (
+          <>
+            <MoodColumns tl={tl} />
+            <MoodLegend />
+            <MoodTable
+              caption="Reactions per time bucket, by mood"
+              rows={tl.buckets.filter((b) => b.total > 0).map((b) => ({ label: bucketLabel(b, tl.bucketMs), split: b }))}
+            />
+          </>
+        ) : (
+          <div className="empty small">Not enough recent reactions yet. Load more on the Reactions tab.</div>
+        )}
       </section>
 
       <div className="sentiment-grid">
@@ -267,75 +275,65 @@ export function SentimentView({ payload, now }: { payload: StreamsPayload | null
           <h2 id="platform-title" className="panel-title">
             Mood by platform
           </h2>
-          <p className="panel-sub">Negative to the left of the line, positive to the right; neutral sits across it.</p>
-          <div className="diverging-list">
+          <p className="panel-sub">Negative to the left of the line, positive to the right.</p>
+          <ul className="diverging-list">
             {platformRows.map((p) => (
-              <div className="diverging-row" key={p.platform} data-platform={p.platform}>
+              <li className="diverging-row" key={p.platform} data-platform={p.platform}>
                 <span className="drow-label">
-                  <i className="dot" />
-                  {REACTION_LABEL[p.platform]} <small>{p.total}</small>
+                  <i className="dot" aria-hidden="true" />
+                  {REACTION_LABEL[p.platform]}
+                  <small>{p.total}</small>
                 </span>
-                <DivergingBar split={p} scale={platformScale} label={REACTION_LABEL[p.platform]} />
+                <span className="drow-side neg">{fmtPct(negative(p), p.total)}</span>
+                <DivergingBar split={p} left={leftMax} right={rightMax} />
+                <span className="drow-side pos">{fmtPct(positive(p), p.total)}</span>
                 <span className="drow-net">{signed(p.net)}</span>
-              </div>
+                <span className="sr-only">
+                  {REACTION_LABEL[p.platform]}: {breakdown(p)}
+                </span>
+              </li>
             ))}
-          </div>
+          </ul>
           <MoodLegend />
-          <MoodTable rows={platformRows.map((p) => ({ label: REACTION_LABEL[p.platform], split: p }))} />
+          <MoodTable caption="Mood by platform" rows={platformRows.map((p) => ({ label: REACTION_LABEL[p.platform], split: p }))} />
         </section>
 
         <section className="panel" aria-labelledby="topic-title">
           <h2 id="topic-title" className="panel-title">
             What people talk about
           </h2>
-          <p className="panel-sub">Most-discussed first. Click a topic to see its loudest reactions below.</p>
+          <p className="panel-sub">Bar length is how often a topic comes up; colour is its mood. Pick one to filter the reactions below.</p>
           <ul className="topic-list">
             {sum.byTopic.map((t) => (
               <li key={t.topic}>
-                <button type="button" aria-pressed={topic === t.topic} onClick={() => setTopic(topic === t.topic ? null : t.topic)}>
+                <button
+                  type="button"
+                  aria-pressed={topic === t.topic}
+                  onClick={() => setTopic(topic === t.topic ? null : t.topic)}
+                  aria-label={`${TOPIC_LABEL[t.topic]}: ${t.total} reactions, net ${signed(t.net)}, ${breakdown(t)}`}
+                >
                   <span className="topic-name">{TOPIC_LABEL[t.topic]}</span>
-                  <span className="topic-count">{t.total}</span>
-                  <span className="topic-bar" aria-hidden="true">
-                    {MOODS.map((m) =>
-                      t.counts[m] === 0 ? null : <span key={m} className="seg" data-mood={m} style={{ flexGrow: t.counts[m] }} />,
-                    )}
+                  <span className="topic-track">
+                    <span className="topic-bar" style={{ width: `${(t.total / topTopic) * 100}%` }}>
+                      {MOODS.map((m) => (t.counts[m] === 0 ? null : <span key={m} className="seg" data-mood={m} style={{ flexGrow: t.counts[m] }} />))}
+                    </span>
+                    <span className="topic-count">{t.total}</span>
                   </span>
                   <span className="topic-net">{signed(t.net)}</span>
                 </button>
               </li>
             ))}
           </ul>
-          <MoodTable rows={sum.byTopic.map((t) => ({ label: TOPIC_LABEL[t.topic], split: t }))} />
+          <MoodTable caption="Mood by topic" rows={sum.byTopic.map((t) => ({ label: TOPIC_LABEL[t.topic], split: t }))} />
         </section>
       </div>
-
-      <section className="panel" aria-labelledby="time-title">
-        <h2 id="time-title" className="panel-title">
-          Mood over the last 24 hours
-        </h2>
-        <p className="panel-sub">
-          By when each post or comment was made. {sum.outsideWindow > 0 ? `${sum.outsideWindow} older reactions (mostly top Instagram and LinkedIn posts) are left out.` : ""}
-        </p>
-        {hoursWithData >= 2 ? (
-          <>
-            <Timeline hours={sum.hours} />
-            <MoodTable
-              rows={sum.hours
-                .filter((b) => b.total > 0)
-                .map((b) => ({ label: `${hourLabel(b.start)}`, split: b }))}
-            />
-          </>
-        ) : (
-          <div className="empty">Not enough reactions from the last 24 hours yet. Load more on the Reactions tab.</div>
-        )}
-      </section>
 
       <div className="sentiment-grid">
         <section className="panel" aria-labelledby="love-title">
           <h2 id="love-title" className="panel-title">
             Loudest love{topic ? ` · ${TOPIC_LABEL[topic]}` : ""}
           </h2>
-          <p className="panel-sub">Most-liked positive and very positive reactions.</p>
+          <p className="panel-sub">Most-liked positive reactions.</p>
           {quotes.loudestLove.length === 0 ? (
             <div className="empty small">None yet.</div>
           ) : (
@@ -350,7 +348,7 @@ export function SentimentView({ payload, now }: { payload: StreamsPayload | null
           <h2 id="gripe-title" className="panel-title">
             Loudest gripes{topic ? ` · ${TOPIC_LABEL[topic]}` : ""}
           </h2>
-          <p className="panel-sub">Most-liked negative and very negative reactions.</p>
+          <p className="panel-sub">Most-liked negative reactions.</p>
           {quotes.loudestGripes.length === 0 ? (
             <div className="empty small">None yet.</div>
           ) : (

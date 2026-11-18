@@ -15,7 +15,7 @@ npm install
 npm run dev        # http://localhost:3000
 ```
 
-Click **Sign in with Composio**. To look around without signing in, press `S` for **demo mode**: made-up channels, posts and scores in the same shapes as the real feeds, with no calls made.
+Click **Sign in with Composio**.
 
 ## Deploy to Vercel
 
@@ -29,7 +29,6 @@ The app is built for serverless hosting:
 - **Nothing has to survive between requests.** Feed caches and "Load more" positions are kept in memory per visitor, for as long as an instance stays warm. A cold instance simply fetches again.
 - **No background work.** Sentiment scoring runs inside requests, three batches at a time, and the page polls every 6 seconds until everything is scored.
 - Routes allow up to 60 seconds (`maxDuration`). The first load of the Reactions tab takes about 20 seconds.
-- The demo fixtures are bundled with `outputFileTracingIncludes` in `next.config.ts`.
 
 ## Where the data comes from
 
@@ -80,16 +79,16 @@ Instant has no built-in dollar cap, so the app enforces one per visitor, in `lib
 
 ## Keys
 
-`1` `2` `3` switch tabs, `R` refresh now, `A` toggle auto refresh, `S` demo mode, `X` leave demo mode.
+`1` `2` `3` switch tabs, `R` refresh now, `A` toggle auto refresh.
 
 ## Checks
 
 ```bash
-npm test            # parsers, response readers, scoring and sentiment math, against the demo fixtures
+npm test            # parsers, response readers, scoring and sentiment math, against made-up fixtures
 npm run typecheck
 ```
 
-`node scripts/make-demo-fixtures.ts` rebuilds the demo fixtures. Every name, post and number in them is invented.
+`node scripts/make-demo-fixtures.ts` rebuilds the test fixtures. Every name, post and number in them is invented.
 
 ## Layout
 
@@ -106,13 +105,13 @@ components/stream-store.ts             Client store (polling, tabs, shortcuts), 
 lib/session.ts                         Encrypted per-visitor cookies and the request context
 lib/composio-mcp.ts                    OAuth provider and MCP client, per visitor
 lib/instant.ts                         Multi-execute calls, charges, offloaded results, spend cap
-lib/sources.ts                         All feeds, caching, paging, demo mode
+lib/sources.ts                         All feeds, caching, paging
 lib/scoring.ts                         Sentiment scoring through OPENAI_CREATE_DECISION
 lib/sentiment.ts                       Net mood, per-platform, per-topic and hourly summaries
 lib/posts.ts                           Post and reaction sorting
 lib/parse/                             Twitch, Kick, YouTube, social and reaction parsers
 lib/config.ts                          Queries, URLs, cache times
-fixtures/                              Made-up demo data for tests and demo mode
+fixtures/                              Made-up responses for the tests
 scripts/make-demo-fixtures.ts          Generates fixtures/
 ```
 

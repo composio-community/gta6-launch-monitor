@@ -110,7 +110,6 @@ export interface SocialPost {
 export type SourceState =
   | "live" // fetched through Composio Instant on this request
   | "cached" // served from the in-memory cache, no Instant call made
-  | "snapshot" // parsed from the saved fixture, no Instant call made
   | "error" // the Instant call or the parse failed
   | "budget" // skipped because the spend cap is reached
   | "signed-out" // not signed in to Composio
@@ -152,7 +151,6 @@ export interface StreamsPayload {
   account: { name: string | null; email: string | null } | null;
   /** Last sign-in failure, if any. */
   authError: string | null;
-  snapshot: boolean;
   /** Sections whose feeds were refreshed for this payload. */
   sections: Section[];
   streams: LiveStream[];

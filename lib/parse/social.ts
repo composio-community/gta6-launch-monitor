@@ -13,16 +13,13 @@ function toIso(v: unknown): string | null {
   return null;
 }
 
-/** Phrases and links that mean "I am streaming this right now / soon". */
-const GOING_LIVE_PHRASE = new RegExp(
+/**
+ * Strong signals: the writer says they are live or posts a stream link. These
+ * count even in a question ("I'm live, who's watching?").
+ */
+const GOING_LIVE_STRONG = new RegExp(
   [
-    // English
-    String.raw`\b(live now|going live|now live|(just |has |have )?went live|goes live|is live|i'?m live|we'?re live|we are live|streaming now|on stream|watch (me |us )?live|check (me|us) out live)\b`,
-    String.raw`\bjoin (my|the|our) (gta ?(6|vi) )?(live ?)?stream\b`,
-    String.raw`\blive ?stream(ing)? (gta ?(6|vi)|now|tonight|today)\b`,
-    String.raw`\b(be|am|are|we'?re|i'?m) streaming\b`,
-    String.raw`\bstreaming (gta|everything|it|live|tonight|today|all)\b`,
-    String.raw`\bstream (tonight|today|starts|at \d|à \d|a las \d|ce soir)`,
+    String.raw`\b(live now|going live|now live|(just |has |have )?went live|goes live|is live|i'?m live|we'?re live|we are live|streaming now|on stream right now)\b`,
     // Spanish, Portuguese, French
     String.raw`\b(ao vivo|en vivo|en directo|en direct|na live)\b`,
     // "Twitch: https://..." link lists
@@ -32,11 +29,29 @@ const GOING_LIVE_PHRASE = new RegExp(
   ].join("|"),
   "i",
 );
-/** The word "live" plus a platform name, in either order: "LIVE NOW ON KICK", "live only on Twitch". */
-const LIVE_WORD = /\blive\b/i;
-const PLATFORM_WORD = /\b(twitch|kick|youtube)\b/i;
 
-export const isGoingLive = (text: string) => GOING_LIVE_PHRASE.test(text) || (LIVE_WORD.test(text) && PLATFORM_WORD.test(text));
+/**
+ * Weaker signals: talk of streaming that announces a stream in a statement,
+ * but is usually someone asking for advice in a question ("best settings for
+ * streaming GTA 6?"). These only count when the post is not a question.
+ */
+const GOING_LIVE_WEAK = new RegExp(
+  [
+    String.raw`\b(on stream|watch (me |us )?live|check (me|us) out live)\b`,
+    String.raw`\bjoin (my|the|our) (gta ?(6|vi) )?(live ?)?stream\b`,
+    String.raw`\blive ?stream(ing)? (gta ?(6|vi)|now|tonight|today)\b`,
+    String.raw`\b(be|am|are|we'?re|i'?m) streaming\b`,
+    String.raw`\bstreaming (gta|everything|it|live|tonight|today|all)\b`,
+    String.raw`\bstream (tonight|today|starts|at \d|à \d|a las \d|ce soir)`,
+    // The word "live" plus a platform name: "live only on Twitch"
+    String.raw`\blive\b.*\b(twitch|kick|youtube)\b|\b(twitch|kick|youtube)\b.*\blive\b`,
+  ].join("|"),
+  "i",
+);
+
+const isQuestion = (text: string) => text.includes("?");
+
+export const isGoingLive = (text: string) => GOING_LIVE_STRONG.test(text) || (!isQuestion(text) && GOING_LIVE_WEAK.test(text));
 
 function post(platform: SocialPlatform, fields: Omit<SocialPost, "platform" | "goingLive" | "id"> & { rawId: string }): SocialPost {
   const { rawId, ...rest } = fields;

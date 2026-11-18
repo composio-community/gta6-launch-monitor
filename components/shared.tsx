@@ -36,7 +36,6 @@ export const isSocial = (id: string): id is SocialPlatform => (SOCIAL_PLATFORMS 
 export const STATE_LABEL: Record<SourceStatus["state"], string> = {
   live: "Fresh",
   cached: "Cached",
-  snapshot: "Demo",
   error: "Failed",
   budget: "Paused",
   "signed-out": "Signed out",

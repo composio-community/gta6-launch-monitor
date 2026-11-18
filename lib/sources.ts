@@ -1,5 +1,3 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
 import { authStatus, SignInRequiredError } from "./composio-mcp.ts";
 import { cacheTtlMs, ERROR_BACKOFF_MS, FORCE_FLOOR_MS, GAME, socialTtlMs } from "./config.ts";
 import { BudgetExceededError, budgetStatus, describeError, readCardPage, runInstant, type CardPage, type OffloadSpec } from "./instant.ts";
@@ -17,7 +15,7 @@ import { parseInstagramHashtag, parseLinkedInSearch, parseRedditSearch, parseXSe
 import { parseTwitchMarkdown } from "./parse/twitch.ts";
 import { findString, unwrapJson } from "./parse/util.ts";
 import { parseScrapeCreatorsYouTube } from "./parse/youtube.ts";
-import { fixtureScores, scoreSome, scoringStatus, withScores } from "./scoring.ts";
+import { scoreSome, scoringStatus, withScores } from "./scoring.ts";
 import { configError, session } from "./session.ts";
 import type { LiveStream, Reaction, Section, SocialPost, SourceId, SourceStatus, StreamsPayload } from "./types.ts";
 
@@ -68,8 +66,6 @@ interface Source {
   parse: (data: unknown) => Parsed;
   more: MoreSpec;
   seed?: Seed;
-  /** Real response saved on Nov 18, 2026, used by tests and snapshot mode. */
-  fixture: string;
 }
 
 const streams = (streams: LiveStream[]): Parsed => ({ streams, posts: [], reactions: [] });
@@ -139,7 +135,6 @@ export const SOURCES: Source[] = [
         { label: "Smallest streams", url: twitchUrl("VIEWER_COUNT_ASC") },
       ],
     },
-    fixture: "twitch-directory.md",
   },
   {
     id: "kick",
@@ -153,7 +148,6 @@ export const SOURCES: Source[] = [
     offload: { cards: { key: "markdown", end: KICK_CARD_END } },
     parse: (data) => streams(parseKickMarkdown(markdownOf(data))),
     more: { kind: "sandbox", spec: { cards: { key: "markdown", end: KICK_CARD_END } } },
-    fixture: "kick-category.md",
   },
   {
     id: "youtube",
@@ -165,7 +159,6 @@ export const SOURCES: Source[] = [
     offload: { keys: ["lives", "videos", "next_cursor"] },
     parse: (data) => streams(parseScrapeCreatorsYouTube(data)),
     more: { kind: "cursor", param: "next_cursor", read: cursorAt("next_cursor", "continuationToken") },
-    fixture: "youtube-search.json",
   },
   {
     id: "x",
@@ -177,7 +170,6 @@ export const SOURCES: Source[] = [
     offload: { keys: ["items", "nextCursor"] },
     parse: (data) => posts(parseXSearch(data)),
     more: { kind: "cursor", param: "cursor", read: cursorAt("nextCursor") },
-    fixture: "social-x.json",
   },
   {
     id: "reddit",
@@ -189,7 +181,6 @@ export const SOURCES: Source[] = [
     offload: { keys: ["items", "next_cursor"] },
     parse: (data) => posts(parseRedditSearch(data)),
     more: { kind: "cursor", param: "next_cursor", read: cursorAt("next_cursor") },
-    fixture: "social-reddit.json",
   },
   {
     id: "instagram",
@@ -201,7 +192,6 @@ export const SOURCES: Source[] = [
     offload: { keys: ["posts", "nextCursor"] },
     parse: (data) => posts(parseInstagramHashtag(data)),
     more: { kind: "cursor", param: "cursor", read: cursorAt("nextCursor") },
-    fixture: "social-instagram.json",
   },
   {
     id: "linkedin",
@@ -214,7 +204,6 @@ export const SOURCES: Source[] = [
     parse: (data) => posts(parseLinkedInSearch(data)),
     // The tool documents at most 11 pages.
     more: { kind: "cursor", param: "next_cursor", read: cursorAt("next_cursor"), maxPages: 11 },
-    fixture: "social-linkedin.json",
   },
 
   // ---------- Reactions: what people say about the game itself ----------
@@ -228,7 +217,6 @@ export const SOURCES: Source[] = [
     offload: { keys: ["items", "nextCursor"] },
     parse: (data) => reactions(parseXReactions(data)),
     more: { kind: "cursor", param: "cursor", read: cursorAt("nextCursor") },
-    fixture: "reactions-x.json",
   },
   {
     id: "react-reddit",
@@ -240,7 +228,6 @@ export const SOURCES: Source[] = [
     offload: { keys: ["items", "next_cursor"] },
     parse: (data) => reactions(parseRedditReactions(data)),
     more: { kind: "cursor", param: "next_cursor", read: cursorAt("next_cursor") },
-    fixture: "reactions-reddit.json",
   },
   {
     id: "react-youtube",
@@ -262,7 +249,6 @@ export const SOURCES: Source[] = [
       parseFor: (data, video) => reactions(parseYouTubeComments(data, video)),
     },
     more: { kind: "queue" },
-    fixture: "reactions-youtube-comments.json",
   },
   {
     id: "react-instagram",
@@ -274,7 +260,6 @@ export const SOURCES: Source[] = [
     offload: { keys: ["posts", "nextCursor"] },
     parse: (data) => reactions(parseInstagramReactions(data)),
     more: { kind: "cursor", param: "cursor", read: cursorAt("nextCursor") },
-    fixture: "reactions-instagram.json",
   },
   {
     id: "react-linkedin",
@@ -286,7 +271,6 @@ export const SOURCES: Source[] = [
     offload: { keys: ["items", "next_cursor"] },
     parse: (data) => reactions(parseLinkedInReactions(data)),
     more: { kind: "cursor", param: "next_cursor", read: cursorAt("next_cursor"), maxPages: 11 },
-    fixture: "reactions-linkedin.json",
   },
 ];
 
@@ -648,31 +632,6 @@ export async function loadMore(ids: SourceId[]): Promise<void> {
   );
 }
 
-export async function loadFixture(source: Source): Promise<Parsed> {
-  const read = async (name: string) => {
-    const raw = await readFile(path.join(process.cwd(), "fixtures", name), "utf8");
-    return name.endsWith(".json") ? JSON.parse(raw) : raw;
-  };
-  if (source.seed) {
-    // Seeded sources save both steps: the seed's result and the first item's response.
-    const items = source.seed.read(await read("reactions-youtube-search.json"));
-    if (!items[0]) return EMPTY;
-    return source.seed.parseFor(await read(source.fixture), items[0]);
-  }
-  return source.parse(await read(source.fixture));
-}
-
-const countOf = (p: Parsed) => p.streams.length + p.posts.length + p.reactions.length;
-
-async function snapshotSource(source: Source): Promise<{ parsed: Parsed; status: SourceStatus }> {
-  try {
-    const parsed = await loadFixture(source);
-    return { parsed, status: { ...blankStatus(source, "snapshot"), count: countOf(parsed), pages: 1 } };
-  } catch (error) {
-    return { parsed: EMPTY, status: blankStatus(source, "error", describeError(error)) };
-  }
-}
-
 /** A source whose tab is not open: show what is already loaded, fetch nothing. */
 function idleSource(source: Source): { parsed: Parsed; status: SourceStatus } {
   const entry = cacheFor().get(source.id);
@@ -680,49 +639,51 @@ function idleSource(source: Source): { parsed: Parsed; status: SourceStatus } {
   return { parsed: snapshotOf(entry), status: statusOf(source, entry, entry.ok ? "cached" : entry.status.state) };
 }
 
-export async function getStreams(options: { force: boolean; snapshot: boolean; sections?: Section[] }): Promise<StreamsPayload> {
+export async function getStreams(options: { force: boolean; sections?: Section[] }): Promise<StreamsPayload> {
   const sections: Section[] = options.sections?.length ? options.sections : ["streamers"];
   const before = await authStatus();
   let results: { parsed: Parsed; status: SourceStatus }[];
 
-  if (options.snapshot) {
-    results = await Promise.all(SOURCES.map(snapshotSource));
-  } else if (!before.signedIn) {
+  if (!before.signedIn) {
     results = SOURCES.map((source) => ({ parsed: EMPTY, status: blankStatus(source, "signed-out") }));
   } else {
+    const newestFirst = (items: Reaction[]) => [...items].sort((a, b) => Date.parse(b.createdAt ?? "0") - Date.parse(a.createdAt ?? "0"));
     results = await Promise.all(
-      SOURCES.map((source) => (sections.includes(source.section) ? liveSource(source, options.force) : idleSource(source))),
+      SOURCES.map(async (source) => {
+        if (!sections.includes(source.section)) return idleSource(source);
+        const result = await liveSource(source, options.force);
+        // Score each reaction feed the moment it lands, alongside the feeds still loading,
+        // instead of waiting for the slowest one.
+        if (source.section === "reactions") await scoreSome(newestFirst(result.parsed.reactions));
+        return result;
+      }),
     );
     if (sections.includes("reactions")) {
+      // One more pass over everything loaded: pages from "Load more", and leftovers past each feed's first batches.
       const cache = cacheFor();
-      const loaded = SOURCES.filter((s) => s.section === "reactions").flatMap((s) => [...(cache.get(s.id)?.reactions.values() ?? [])]);
-      // Newest first, so the reactions people see first get their mood first.
-      loaded.sort((a, b) => Date.parse(b.createdAt ?? "0") - Date.parse(a.createdAt ?? "0"));
-      await scoreSome(loaded);
+      await scoreSome(newestFirst(SOURCES.filter((s) => s.section === "reactions").flatMap((s) => [...(cache.get(s.id)?.reactions.values() ?? [])])));
     }
   }
 
   // A call can find the sign-in expired, so read the status again afterwards.
-  const auth = options.snapshot || !before.signedIn ? before : await authStatus();
+  const auth = before.signedIn ? await authStatus() : before;
 
   const seen = new Set<string>();
   const unique = <T extends { id: string }>(items: T[]) => items.filter((i) => (seen.has(i.id) ? false : (seen.add(i.id), true)));
   const newestFirst = <T extends { createdAt: string | null }>(a: T, b: T) =>
     (b.createdAt ? Date.parse(b.createdAt) : 0) - (a.createdAt ? Date.parse(a.createdAt) : 0);
 
-  const extraScores = options.snapshot ? await fixtureScores() : undefined;
-  const allReactions = withScores(unique(results.flatMap((r) => r.parsed.reactions)), extraScores).sort(newestFirst);
+  const allReactions = withScores(unique(results.flatMap((r) => r.parsed.reactions))).sort(newestFirst);
 
   return {
     signedIn: auth.signedIn,
     account: auth.account,
     authError: configError() ?? auth.error,
-    snapshot: options.snapshot,
-    sections: options.snapshot ? ["streamers", "reactions"] : sections,
+    sections,
     streams: unique(results.flatMap((r) => r.parsed.streams)).sort((a, b) => (b.viewers ?? -1) - (a.viewers ?? -1)),
     posts: unique(results.flatMap((r) => r.parsed.posts)).sort(newestFirst),
     reactions: allReactions,
-    scoring: scoringStatus(allReactions, options.snapshot),
+    scoring: scoringStatus(allReactions),
     sources: results.map((r) => r.status),
     budget: budgetStatus(),
     generatedAt: new Date().toISOString(),
