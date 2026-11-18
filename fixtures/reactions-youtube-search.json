@@ -1,0 +1,72 @@
+{
+ "success": true,
+ "has_more": false,
+ "next_cursor": null,
+ "videos": [
+  {
+   "type": "video",
+   "id": "demoVideo00",
+   "url": "https://www.youtube.com/watch?v=demoVideo00",
+   "title": "GTA 6 Review: is it worth the wait?",
+   "thumbnail": null,
+   "viewCountInt": 1500000,
+   "viewCountText": "1,500,000 views",
+   "badges": []
+  },
+  {
+   "type": "video",
+   "id": "demoVideo01",
+   "url": "https://www.youtube.com/watch?v=demoVideo01",
+   "title": "GTA 5 Online: one last ride",
+   "thumbnail": null,
+   "viewCountInt": 1320000,
+   "viewCountText": "1,320,000 views",
+   "badges": []
+  },
+  {
+   "type": "video",
+   "id": "demoVideo02",
+   "url": "https://www.youtube.com/watch?v=demoVideo02",
+   "title": "Everything you need to know before GTA 6 day one",
+   "thumbnail": null,
+   "viewCountInt": 1140000,
+   "viewCountText": "1,140,000 views",
+   "badges": []
+  },
+  {
+   "type": "video",
+   "id": "demoVideo03",
+   "url": "https://www.youtube.com/watch?v=demoVideo03",
+   "title": "Grand Theft Auto IV, revisited",
+   "thumbnail": null,
+   "viewCountInt": 960000,
+   "viewCountText": "960,000 views",
+   "badges": []
+  },
+  {
+   "type": "video",
+   "id": "demoVideo04",
+   "url": "https://www.youtube.com/watch?v=demoVideo04",
+   "title": "GTA VI first 30 minutes (no commentary)",
+   "thumbnail": null,
+   "viewCountInt": 780000,
+   "viewCountText": "780,000 views",
+   "badges": []
+  },
+  {
+   "type": "video",
+   "id": "demoVideo05",
+   "url": "https://www.youtube.com/watch?v=demoVideo05",
+   "title": "Ranking every GTA 6 radio station",
+   "thumbnail": null,
+   "viewCountInt": 600000,
+   "viewCountText": "600,000 views",
+   "badges": []
+  }
+ ],
+ "lives": [],
+ "shorts": [],
+ "channels": [],
+ "playlists": [],
+ "shelves": []
+}

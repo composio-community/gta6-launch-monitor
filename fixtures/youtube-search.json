@@ -1,0 +1,354 @@
+{
+ "success": true,
+ "has_more": true,
+ "next_cursor": "demo-cursor-youtube-2",
+ "lives": [
+  {
+   "type": "live",
+   "id": "demoLive000",
+   "url": "https://www.youtube.com/watch?v=demoLive000",
+   "title": "🔴 Blind playthrough, no spoilers please",
+   "thumbnail": null,
+   "channel": {
+    "id": "UCdemo0000",
+    "title": "CasinoCassie",
+    "handle": "casinocassie",
+    "thumbnail": null
+   },
+   "viewCountText": "14,067 watching",
+   "viewCountInt": 14067,
+   "badges": [
+    "LIVE"
+   ]
+  },
+  {
+   "type": "live",
+   "id": "demoLive001",
+   "url": "https://www.youtube.com/watch?v=demoLive001",
+   "title": "🔴 Blind playthrough, no spoilers please",
+   "thumbnail": null,
+   "channel": {
+    "id": "UCdemo0001",
+    "title": "HurricaneHal",
+    "handle": "hurricanehal",
+    "thumbnail": null
+   },
+   "viewCountText": "7,141 watching",
+   "viewCountInt": 7141,
+   "badges": [
+    "LIVE"
+   ]
+  },
+  {
+   "type": "live",
+   "id": "demoLive002",
+   "url": "https://www.youtube.com/watch?v=demoLive002",
+   "title": "🔴 Exploring the Keys at sunset",
+   "thumbnail": null,
+   "channel": {
+    "id": "UCdemo0002",
+    "title": "SwampSally",
+    "handle": "swampsally",
+    "thumbnail": null
+   },
+   "viewCountText": "4,794 watching",
+   "viewCountInt": 4794,
+   "badges": [
+    "LIVE"
+   ]
+  },
+  {
+   "type": "live",
+   "id": "demoLive003",
+   "url": "https://www.youtube.com/watch?v=demoLive003",
+   "title": "🔴 First heist with chat",
+   "thumbnail": null,
+   "channel": {
+    "id": "UCdemo0003",
+    "title": "CoralCam",
+    "handle": "coralcam",
+    "thumbnail": null
+   },
+   "viewCountText": "3,893 watching",
+   "viewCountInt": 3893,
+   "badges": [
+    "LIVE"
+   ]
+  },
+  {
+   "type": "live",
+   "id": "demoLive004",
+   "url": "https://www.youtube.com/watch?v=demoLive004",
+   "title": "🔴 Story mode start to finish",
+   "thumbnail": null,
+   "channel": {
+    "id": "UCdemo0004",
+    "title": "PelicanPat",
+    "handle": "pelicanpat",
+    "thumbnail": null
+   },
+   "viewCountText": "3,053 watching",
+   "viewCountInt": 3053,
+   "badges": [
+    "LIVE"
+   ]
+  },
+  {
+   "type": "live",
+   "id": "demoLive005",
+   "url": "https://www.youtube.com/watch?v=demoLive005",
+   "title": "🔴 Speedrun practice, any%",
+   "thumbnail": null,
+   "channel": {
+    "id": "UCdemo0005",
+    "title": "TikiTobi",
+    "handle": "tikitobi",
+    "thumbnail": null
+   },
+   "viewCountText": "2,709 watching",
+   "viewCountInt": 2709,
+   "badges": [
+    "LIVE"
+   ]
+  },
+  {
+   "type": "live",
+   "id": "demoLive006",
+   "url": "https://www.youtube.com/watch?v=demoLive006",
+   "title": "🔴 Photo mode tour of the beaches",
+   "thumbnail": null,
+   "channel": {
+    "id": "UCdemo0006",
+    "title": "BayfrontBea",
+    "handle": "bayfrontbea",
+    "thumbnail": null
+   },
+   "viewCountText": "2,028 watching",
+   "viewCountInt": 2028,
+   "badges": [
+    "LIVE"
+   ]
+  },
+  {
+   "type": "live",
+   "id": "demoLive007",
+   "url": "https://www.youtube.com/watch?v=demoLive007",
+   "title": "🔴 First heist with chat",
+   "thumbnail": null,
+   "channel": {
+    "id": "UCdemo0007",
+    "title": "SprinterSid",
+    "handle": "sprintersid",
+    "thumbnail": null
+   },
+   "viewCountText": "1,787 watching",
+   "viewCountInt": 1787,
+   "badges": [
+    "LIVE"
+   ]
+  },
+  {
+   "type": "live",
+   "id": "demoLive008",
+   "url": "https://www.youtube.com/watch?v=demoLive008",
+   "title": "🔴 Photo mode tour of the beaches",
+   "thumbnail": null,
+   "channel": {
+    "id": "UCdemo0008",
+    "title": "NitroNat",
+    "handle": "nitronat",
+    "thumbnail": null
+   },
+   "viewCountText": "1,880 watching",
+   "viewCountInt": 1880,
+   "badges": [
+    "LIVE"
+   ]
+  },
+  {
+   "type": "live",
+   "id": "demoLive009",
+   "url": "https://www.youtube.com/watch?v=demoLive009",
+   "title": "🔴 Finding every secret in Leonida",
+   "thumbnail": null,
+   "channel": {
+    "id": "UCdemo0009",
+    "title": "RooftopRio",
+    "handle": "rooftoprio",
+    "thumbnail": null
+   },
+   "viewCountText": "1,452 watching",
+   "viewCountInt": 1452,
+   "badges": [
+    "LIVE"
+   ]
+  },
+  {
+   "type": "live",
+   "id": "demoLive010",
+   "url": "https://www.youtube.com/watch?v=demoLive010",
+   "title": "🔴 GTA VI launch marathon [24h]",
+   "thumbnail": null,
+   "channel": {
+    "id": "UCdemo0010",
+    "title": "DriftDaria",
+    "handle": "driftdaria",
+    "thumbnail": null
+   },
+   "viewCountText": "1,371 watching",
+   "viewCountInt": 1371,
+   "badges": [
+    "LIVE"
+   ]
+  },
+  {
+   "type": "live",
+   "id": "demoLive011",
+   "url": "https://www.youtube.com/watch?v=demoLive011",
+   "title": "🔴 Jason & Lucia, chapter one",
+   "thumbnail": null,
+   "channel": {
+    "id": "UCdemo0011",
+    "title": "LowriderLeo",
+    "handle": "lowriderleo",
+    "thumbnail": null
+   },
+   "viewCountText": "1,499 watching",
+   "viewCountInt": 1499,
+   "badges": [
+    "LIVE"
+   ]
+  },
+  {
+   "type": "live",
+   "id": "demoLive012",
+   "url": "https://www.youtube.com/watch?v=demoLive012",
+   "title": "🔴 Photo mode tour of the beaches",
+   "thumbnail": null,
+   "channel": {
+    "id": "UCdemo0012",
+    "title": "HeistHelga",
+    "handle": "heisthelga",
+    "thumbnail": null
+   },
+   "viewCountText": "1,103 watching",
+   "viewCountInt": 1103,
+   "badges": [
+    "LIVE"
+   ]
+  },
+  {
+   "type": "live",
+   "id": "demoLive013",
+   "url": "https://www.youtube.com/watch?v=demoLive013",
+   "title": "🔴 First heist with chat",
+   "thumbnail": null,
+   "channel": {
+    "id": "UCdemo0013",
+    "title": "GetawayGabe",
+    "handle": "getawaygabe",
+    "thumbnail": null
+   },
+   "viewCountText": "1,161 watching",
+   "viewCountInt": 1161,
+   "badges": [
+    "LIVE"
+   ]
+  },
+  {
+   "type": "live",
+   "id": "demoLive014",
+   "url": "https://www.youtube.com/watch?v=demoLive014",
+   "title": "🔴 GTA VI launch marathon [24h]",
+   "thumbnail": null,
+   "channel": {
+    "id": "UCdemo0014",
+    "title": "RadioRaul",
+    "handle": "radioraul",
+    "thumbnail": null
+   },
+   "viewCountText": "1,099 watching",
+   "viewCountInt": 1099,
+   "badges": [
+    "LIVE"
+   ]
+  },
+  {
+   "type": "live",
+   "id": "demoLive015",
+   "url": "https://www.youtube.com/watch?v=demoLive015",
+   "title": "🔴 First heist with chat",
+   "thumbnail": null,
+   "channel": {
+    "id": "UCdemo0015",
+    "title": "VinylVera",
+    "handle": "vinylvera",
+    "thumbnail": null
+   },
+   "viewCountText": "1,061 watching",
+   "viewCountInt": 1061,
+   "badges": [
+    "LIVE"
+   ]
+  },
+  {
+   "type": "live",
+   "id": "demoLive016",
+   "url": "https://www.youtube.com/watch?v=demoLive016",
+   "title": "🔴 GTA 6 DAY ONE: first time in Vice City",
+   "thumbnail": null,
+   "channel": {
+    "id": "UCdemo0016",
+    "title": "ArcadeArlo",
+    "handle": "arcadearlo",
+    "thumbnail": null
+   },
+   "viewCountText": "989 watching",
+   "viewCountInt": 989,
+   "badges": [
+    "LIVE"
+   ]
+  },
+  {
+   "type": "live",
+   "id": "demoLive017",
+   "url": "https://www.youtube.com/watch?v=demoLive017",
+   "title": "🔴 Exploring the Keys at sunset",
+   "thumbnail": null,
+   "channel": {
+    "id": "UCdemo0017",
+    "title": "PixelPia",
+    "handle": "pixelpia",
+    "thumbnail": null
+   },
+   "viewCountText": "1,044 watching",
+   "viewCountInt": 1044,
+   "badges": [
+    "LIVE"
+   ]
+  },
+  {
+   "type": "live",
+   "id": "demoLive018",
+   "url": "https://www.youtube.com/watch?v=demoLive018",
+   "title": "🔴 Exploring the Keys at sunset",
+   "thumbnail": null,
+   "channel": {
+    "id": "UCdemo0018",
+    "title": "TurboTess",
+    "handle": "turbotess",
+    "thumbnail": null
+   },
+   "viewCountText": "954 watching",
+   "viewCountInt": 954,
+   "badges": [
+    "LIVE"
+   ]
+  }
+ ],
+ "videos": [],
+ "shorts": [],
+ "channels": [],
+ "playlists": [],
+ "shelves": []
+}

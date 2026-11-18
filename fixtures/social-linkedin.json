@@ -1,0 +1,178 @@
+{
+ "success": true,
+ "has_more": true,
+ "next_cursor": "demo-cursor-linkedin-2",
+ "query": "GTA 6",
+ "items": [
+  {
+   "url": "https://www.linkedin.com/posts/demo-post-0000",
+   "description": "Our team is going live all day to play GTA 6 together. Join the stream!",
+   "date_published": "2026-11-18T14:00:00.000Z",
+   "like_count": 107,
+   "comment_count": 16,
+   "comments": [],
+   "image": null,
+   "images": [],
+   "media": null,
+   "author": {
+    "name": "TurboTess Studio",
+    "url": "https://www.linkedin.com/company/demo",
+    "image": null,
+    "followers": 6833
+   }
+  },
+  {
+   "url": "https://www.linkedin.com/posts/demo-post-0001",
+   "description": "Which streamer are you watching for the GTA 6 launch?",
+   "date_published": "2026-11-18T09:00:00.000Z",
+   "like_count": 153,
+   "comment_count": 7,
+   "comments": [],
+   "image": null,
+   "images": [],
+   "media": null,
+   "author": {
+    "name": "ShrimpShackSol Studio",
+    "url": "https://www.linkedin.com/company/demo",
+    "image": null,
+    "followers": 3564
+   }
+  },
+  {
+   "url": "https://www.linkedin.com/posts/demo-post-0002",
+   "description": "Watch party for GTA VI tonight at the community center",
+   "date_published": "2026-11-18T04:00:00.000Z",
+   "like_count": 175,
+   "comment_count": 19,
+   "comments": [],
+   "image": null,
+   "images": [],
+   "media": null,
+   "author": {
+    "name": "CanalCleo Studio",
+    "url": "https://www.linkedin.com/company/demo",
+    "image": null,
+    "followers": 2692
+   }
+  },
+  {
+   "url": "https://www.linkedin.com/posts/demo-post-0003",
+   "description": "Is it a good idea to stream GTA VI on launch night or will everything lag?",
+   "date_published": "2026-11-17T23:00:00.000Z",
+   "like_count": 167,
+   "comment_count": 19,
+   "comments": [],
+   "image": null,
+   "images": [],
+   "media": null,
+   "author": {
+    "name": "IsletIggy Studio",
+    "url": "https://www.linkedin.com/company/demo",
+    "image": null,
+    "followers": 5891
+   }
+  },
+  {
+   "url": "https://www.linkedin.com/posts/demo-post-0004",
+   "description": "Our team is going live all day to play GTA 6 together. Join the stream!",
+   "date_published": "2026-11-17T18:00:00.000Z",
+   "like_count": 130,
+   "comment_count": 7,
+   "comments": [],
+   "image": null,
+   "images": [],
+   "media": null,
+   "author": {
+    "name": "KeysKaren Studio",
+    "url": "https://www.linkedin.com/company/demo",
+    "image": null,
+    "followers": 1166
+   }
+  },
+  {
+   "url": "https://www.linkedin.com/posts/demo-post-0005",
+   "description": "Is it a good idea to stream GTA VI on launch night or will everything lag?",
+   "date_published": "2026-11-17T13:00:00.000Z",
+   "like_count": 24,
+   "comment_count": 18,
+   "comments": [],
+   "image": null,
+   "images": [],
+   "media": null,
+   "author": {
+    "name": "HamletHana Studio",
+    "url": "https://www.linkedin.com/company/demo",
+    "image": null,
+    "followers": 8227
+   }
+  },
+  {
+   "url": "https://www.linkedin.com/posts/demo-post-0006",
+   "description": "Best capture settings for streaming GTA 6 on console?",
+   "date_published": "2026-11-17T08:00:00.000Z",
+   "like_count": 77,
+   "comment_count": 1,
+   "comments": [],
+   "image": null,
+   "images": [],
+   "media": null,
+   "author": {
+    "name": "WaveRiderWes Studio",
+    "url": "https://www.linkedin.com/company/demo",
+    "image": null,
+    "followers": 4656
+   }
+  },
+  {
+   "url": "https://www.linkedin.com/posts/demo-post-0007",
+   "description": "GTA 6 launch timeline: when does it unlock in each region?",
+   "date_published": "2026-11-17T03:00:00.000Z",
+   "like_count": 128,
+   "comment_count": 12,
+   "comments": [],
+   "image": null,
+   "images": [],
+   "media": null,
+   "author": {
+    "name": "BayfrontBea Studio",
+    "url": "https://www.linkedin.com/company/demo",
+    "image": null,
+    "followers": 161
+   }
+  },
+  {
+   "url": "https://www.linkedin.com/posts/demo-post-0008",
+   "description": "Our team is going live all day to play GTA 6 together. Join the stream!",
+   "date_published": "2026-11-16T22:00:00.000Z",
+   "like_count": 121,
+   "comment_count": 2,
+   "comments": [],
+   "image": null,
+   "images": [],
+   "media": null,
+   "author": {
+    "name": "GetawayGabe Studio",
+    "url": "https://www.linkedin.com/company/demo",
+    "image": null,
+    "followers": 4645
+   }
+  },
+  {
+   "url": "https://www.linkedin.com/posts/demo-post-0009",
+   "description": "GTA 6 launch timeline: when does it unlock in each region?",
+   "date_published": "2026-11-16T17:00:00.000Z",
+   "like_count": 49,
+   "comment_count": 13,
+   "comments": [],
+   "image": null,
+   "images": [],
+   "media": null,
+   "author": {
+    "name": "CrocCarl Studio",
+    "url": "https://www.linkedin.com/company/demo",
+    "image": null,
+    "followers": 1322
+   }
+  }
+ ]
+}
