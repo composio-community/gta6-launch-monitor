@@ -27,7 +27,8 @@ export const TOPICS = [
   { id: "price", label: "Price & editions", hint: "price, editions, PC port, platforms, cloud gaming" },
   { id: "streams", label: "Streams & creators", hint: "streamers, watch parties, reactions, clips, giveaways" },
   { id: "hype", label: "Hype & launch", hint: "excitement, the wait, launch moment, memes, sales records" },
-  { id: "other", label: "Other", hint: "anything else, or not about GTA VI" },
+  { id: "other", label: "Other", hint: "about GTA VI, but none of the topics above" },
+  { id: "off-topic", label: "Not about GTA VI", hint: "not about GTA VI at all: other games, unrelated news, spam" },
 ] as const;
 export type Topic = (typeof TOPICS)[number]["id"];
 

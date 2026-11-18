@@ -1,3 +1,4 @@
+import { GAME } from "../config.ts";
 import type { SocialPlatform, SocialPost } from "../types.ts";
 import { cleanText, findArray, unwrapJson } from "./util.ts";
 
@@ -20,12 +21,14 @@ function toIso(v: unknown): string | null {
 const GOING_LIVE_STRONG = new RegExp(
   [
     String.raw`\b(live now|going live|now live|(just |has |have )?went live|goes live|is live|i'?m live|we'?re live|we are live|streaming now|on stream right now)\b`,
+    // First person streaming is an announcement even when it ends in a question ("I'm streaming tonight, join?").
+    String.raw`\b(i'?m|i am|we'?re|we are) (going to be |gonna be )?streaming\b`,
     // Spanish, Portuguese, French
     String.raw`\b(ao vivo|en vivo|en directo|en direct|na live)\b`,
     // "Twitch: https://..." link lists
     String.raw`\b(twitch|kick|youtube|yt)\s*:\s*https?:`,
-    // Stream links that survived link shortening
-    String.raw`twitch\.tv\/|kick\.com\/|youtube\.com\/live|youtu\.be\/`,
+    // Stream links that survived link shortening. youtu.be is left out: it is mostly ordinary videos.
+    String.raw`twitch\.tv\/|kick\.com\/|youtube\.com\/live\b`,
   ].join("|"),
   "i",
 );
@@ -40,7 +43,7 @@ const GOING_LIVE_WEAK = new RegExp(
     String.raw`\b(on stream|watch (me |us )?live|check (me|us) out live)\b`,
     String.raw`\bjoin (my|the|our) (gta ?(6|vi) )?(live ?)?stream\b`,
     String.raw`\blive ?stream(ing)? (gta ?(6|vi)|now|tonight|today)\b`,
-    String.raw`\b(be|am|are|we'?re|i'?m) streaming\b`,
+    String.raw`\b(be|am|are) streaming\b`,
     String.raw`\bstreaming (gta|everything|it|live|tonight|today|all)\b`,
     String.raw`\bstream (tonight|today|starts|at \d|à \d|a las \d|ce soir)`,
     // The word "live" plus a platform name: "live only on Twitch"
@@ -58,14 +61,17 @@ function post(platform: SocialPlatform, fields: Omit<SocialPost, "platform" | "g
   return { ...rest, id: `${platform}:${rawId}`, platform, goingLive: isGoingLive(fields.text) };
 }
 
-/** GETANYAPI_TWITTER_SEARCH: output.data.items[]. */
+/**
+ * GETANYAPI_TWITTER_SEARCH: output.data.items[]. Posts whose own text doesn't
+ * name the game are dropped (see GAME.mention).
+ */
 export function parseXSearch(data: unknown): SocialPost[] {
   const items = findArray(unwrapJson(data), "items") ?? [];
   return items.flatMap((raw) => {
     const t = rec(raw);
     const id = str(t?.id);
     const text = cleanText(str(t?.text));
-    if (!t || !id || !text) return [];
+    if (!t || !id || !text || !GAME.mention.test(text)) return [];
     const username = str(t.authorUsername);
     return [
       post("x", {

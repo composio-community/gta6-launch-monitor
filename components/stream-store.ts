@@ -1,4 +1,4 @@
-import type { Section, SourceId, StreamsPayload } from "@/lib/types";
+import { REACTION_PLATFORMS, reactionSourceId, SOCIAL_PLATFORMS, type Section, type SourceId, type StreamsPayload } from "@/lib/types";
 
 export type Tab = "streamers" | "reactions" | "sentiment";
 export const TABS: Tab[] = ["streamers", "reactions", "sentiment"];
@@ -24,6 +24,10 @@ export interface StreamState {
   /** Set when the last "Load more" request failed outright. */
   moreError: string | null;
   tab: Tab;
+  /** Load the next page of the open section's feeds on a timer, instead of waiting for a click. */
+  autoMore: boolean;
+  /** When the next automatic page load is due. null while auto update is off. */
+  nextAutoAt: number | null;
   /**
    * Sections whose feeds the server should refresh. A section joins once its
    * tab is opened, so the reaction feeds cost nothing until someone looks.
@@ -43,13 +47,21 @@ const INITIAL: StreamState = {
   loadingMore: [],
   moreError: null,
   tab: "streamers",
+  autoMore: true,
+  nextAutoAt: null,
   sections: ["streamers"],
 };
+
+/** How often auto update loads the next page. Each round is one paid call per feed that has more. */
+export const AUTO_MORE_MS = 60_000;
+const SOCIAL_IDS: SourceId[] = SOCIAL_PLATFORMS;
+const REACTION_IDS: SourceId[] = REACTION_PLATFORMS.map(reactionSourceId);
 
 let state: StreamState = INITIAL;
 const listeners = new Set<() => void>();
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 let tickTimer: ReturnType<typeof setInterval> | null = null;
+let moreTimer: ReturnType<typeof setInterval> | null = null;
 let requestSeq = 0;
 let inflight = false;
 /** Short follow-up poll while sentiment scoring runs in the background. */
@@ -136,6 +148,27 @@ async function loadMore(ids: SourceId[]) {
   }
 }
 
+/** The feeds auto update works on for the open tab: the social radar's on Streamers, the reaction feeds otherwise. */
+export function autoMoreIds(payload: StreamsPayload | null, tab: Tab): SourceId[] {
+  if (!payload?.signedIn) return [];
+  const pool = tab === "streamers" ? SOCIAL_IDS : REACTION_IDS;
+  return payload.sources.filter((s) => pool.includes(s.source) && s.hasMore).map((s) => s.source);
+}
+
+function autoTick() {
+  set({ nextAutoAt: state.autoMore ? Date.now() + AUTO_MORE_MS : null });
+  // A hidden tab should not spend money, and one round at a time is enough.
+  if (!state.autoMore || document.visibilityState !== "visible" || state.loadingMore.length > 0) return;
+  const ids = autoMoreIds(state.payload, state.tab);
+  if (ids.length > 0) void loadMore(ids);
+}
+
+function restartAutoTimer() {
+  if (moreTimer) clearInterval(moreTimer);
+  moreTimer = setInterval(autoTick, AUTO_MORE_MS);
+  set({ nextAutoAt: state.autoMore ? Date.now() + AUTO_MORE_MS : null });
+}
+
 /** Keys shown on the button prompts. Ignored while typing in a field. */
 function onKey(event: KeyboardEvent) {
   if (event.metaKey || event.ctrlKey || event.altKey || event.repeat) return;
@@ -157,15 +190,18 @@ function start() {
     if (state.auto && document.visibilityState === "visible") void load(false);
   }, POLL_MS);
   tickTimer = setInterval(() => set({ now: Date.now() }), TICK_MS);
+  restartAutoTimer();
 }
 
 function stop() {
   window.removeEventListener("keydown", onKey);
   if (pollTimer) clearInterval(pollTimer);
   if (tickTimer) clearInterval(tickTimer);
+  if (moreTimer) clearInterval(moreTimer);
   if (scoringTimer) clearTimeout(scoringTimer);
   pollTimer = null;
   tickTimer = null;
+  moreTimer = null;
   scoringTimer = null;
 }
 
@@ -183,6 +219,11 @@ export const streamStore = {
   refresh: () => void load(true),
   loadMore: (ids: SourceId[]) => void loadMore(ids),
   setAuto: (auto: boolean) => set({ auto }),
+  setAutoMore(on: boolean) {
+    set({ autoMore: on });
+    // Restart the clock so "next in" counts a full interval from the switch.
+    restartAutoTimer();
+  },
   setTab(tab: Tab) {
     const section = SECTION_OF[tab];
     const opening = !state.sections.includes(section);

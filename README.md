@@ -84,11 +84,10 @@ Instant has no built-in dollar cap, so the app enforces one per visitor, in `lib
 ## Checks
 
 ```bash
-npm test            # parsers, response readers, scoring and sentiment math, against made-up fixtures
 npm run typecheck
 ```
 
-`node scripts/make-demo-fixtures.ts` rebuilds the test fixtures. Every name, post and number in them is invented.
+`node scripts/make-demo-fixtures.ts` rebuilds the fixtures. Every name, post and number in them is invented.
 
 ## Layout
 
@@ -111,7 +110,7 @@ lib/sentiment.ts                       Net mood, per-platform, per-topic and hou
 lib/posts.ts                           Post and reaction sorting
 lib/parse/                             Twitch, Kick, YouTube, social and reaction parsers
 lib/config.ts                          Queries, URLs, cache times
-fixtures/                              Made-up responses for the tests
+fixtures/                              Made-up Composio responses
 scripts/make-demo-fixtures.ts          Generates fixtures/
 ```
 

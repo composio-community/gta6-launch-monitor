@@ -45,7 +45,7 @@ interface ScoringState {
 }
 
 // Kept on globalThis so dev hot reloads don't drop it. Bump the key when the shape changes.
-const KEY = "__gtaScoring_v4";
+const KEY = "__gtaScoring_v5";
 const globalStore = globalThis as typeof globalThis & { [KEY]?: ScoringState };
 const state: ScoringState = (globalStore[KEY] ??= {
   scores: new Map(),
@@ -94,7 +94,7 @@ export function buildDecision(batch: Reaction[]) {
     {
       type: "choice",
       name: `t${i + 1}`,
-      instructions: `Main topic of item [${i + 1}].`,
+      instructions: `Main topic of item [${i + 1}]. Choose off-topic when the item is not about GTA VI at all, even if it mentions another game or GTA 5.`,
       choices: TOPICS.map((t) => ({ value: t.id, description: t.hint })),
     },
   ]);

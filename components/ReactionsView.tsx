@@ -15,18 +15,28 @@ import {
   type StreamsPayload,
   type Topic,
 } from "@/lib/types";
-import { Avatar, Feeds, LoadMore, REACTION_LABEL, Row } from "./shared";
+import { AutoUpdate, Avatar, Feeds, LoadMore, REACTION_LABEL, Row } from "./shared";
 
-type MoodFilter = "all" | "positive" | "neutral" | "negative";
+type MoodFilter = "all" | "positive" | "neutral" | "negative" | "off-topic";
 const MOOD_FILTERS: { id: MoodFilter; label: string }[] = [
   { id: "all", label: "Any mood" },
   { id: "positive", label: "Positive" },
   { id: "neutral", label: "Neutral" },
   { id: "negative", label: "Negative" },
+  { id: "off-topic", label: "Not about GTA VI" },
 ];
 
+/** Off-topic reactions get no mood group: they are left out of every mood figure. */
 const moodGroup = (r: Reaction): MoodFilter | null =>
-  r.mood === null ? null : r.mood.endsWith("positive") ? "positive" : r.mood.endsWith("negative") ? "negative" : "neutral";
+  r.mood === null
+    ? null
+    : r.topic === "off-topic"
+      ? "off-topic"
+      : r.mood.endsWith("positive")
+        ? "positive"
+        : r.mood.endsWith("negative")
+          ? "negative"
+          : "neutral";
 
 export function signed(n: number | null): string {
   if (n === null) return "--";
@@ -51,14 +61,18 @@ export function ReactionCard({ reaction: r, now }: { reaction: Reaction; now: nu
       </div>
       <p className="post-text">{r.text}</p>
       <div className="reaction-foot">
-        {r.mood ? (
+        {r.topic === "off-topic" ? (
+          <span className="mood off-topic" title="Not about GTA VI: left out of every mood figure">
+            Not about GTA VI
+          </span>
+        ) : r.mood ? (
           <span className="mood" data-mood={r.mood}>
             {MOOD_LABEL[r.mood]}
           </span>
         ) : (
           <span className="mood pending">Scoring</span>
         )}
-        {r.topic ? <span className="tag">{TOPIC_LABEL[r.topic]}</span> : null}
+        {r.topic && r.topic !== "off-topic" ? <span className="tag">{TOPIC_LABEL[r.topic]}</span> : null}
         {stats.length > 0 ? <span className="post-stats">{stats.join(" · ")}</span> : null}
       </div>
       <span className="sr-only">(opens in a new tab)</span>
@@ -95,11 +109,15 @@ export function ReactionsView({
   now,
   statuses,
   loadingMore,
+  autoMore,
+  nextAutoAt,
 }: {
   payload: StreamsPayload | null;
   now: number;
   statuses: Map<SourceId, SourceStatus>;
   loadingMore: SourceId[];
+  autoMore: boolean;
+  nextAutoAt: number | null;
 }) {
   const [platform, setPlatform] = useState<ReactionPlatform | "all">("all");
   const [mood, setMood] = useState<MoodFilter>("all");
@@ -118,7 +136,7 @@ export function ReactionsView({
   const platformCounts = Object.fromEntries(REACTION_PLATFORMS.map((p) => [p, 0])) as Record<ReactionPlatform, number>;
   for (const r of searched) platformCounts[r.platform] += 1;
   const inPlatform = searched.filter((r) => platform === "all" || r.platform === platform);
-  const moodCounts: Record<MoodFilter, number> = { all: inPlatform.length, positive: 0, neutral: 0, negative: 0 };
+  const moodCounts: Record<MoodFilter, number> = { all: inPlatform.length, positive: 0, neutral: 0, negative: 0, "off-topic": 0 };
   for (const r of inPlatform) {
     const g = moodGroup(r);
     if (g) moodCounts[g] += 1;
@@ -153,7 +171,7 @@ export function ReactionsView({
             <li key={m.id} data-mood-group={m.id}>
               <button type="button" aria-pressed={mood === m.id} onClick={() => setMood(m.id)}>
                 <span>
-                  {m.id === "all" ? null : <i className="mood-dot" />}
+                  {m.id === "all" || m.id === "off-topic" ? null : <i className="mood-dot" />}
                   {m.label}
                 </span>
                 <span>{moodCounts[m.id]}</span>
@@ -210,7 +228,7 @@ export function ReactionsView({
           </div>
           <div className="stat wide">
             <span className="stat-value">{mix.total ? `${Math.round(((mix.counts.negative + mix.counts["very-negative"]) / mix.total) * 100)}%` : "--"}</span>
-            <span className="stat-label">Negative · of {mix.total} scored</span>
+            <span className="stat-label">Negative · of {mix.total} counted</span>
           </div>
         </div>
 
@@ -238,6 +256,16 @@ export function ReactionsView({
             loadingMore={loadingMore}
             noun={platform === "all" ? "reactions" : `${REACTION_LABEL[platform]} reactions`}
             endNote="That's every reaction these feeds return for now."
+          />
+        ) : null}
+        {loaded ? (
+          <AutoUpdate
+            ids={REACTION_PLATFORMS.map(reactionSourceId)}
+            statuses={statuses}
+            on={autoMore}
+            nextAt={nextAutoAt}
+            now={now}
+            noun="reaction"
           />
         ) : null}
 

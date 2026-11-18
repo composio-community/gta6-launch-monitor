@@ -16,7 +16,7 @@ import {
 } from "@/lib/types";
 import { ReactionsView } from "./ReactionsView";
 import { SentimentView } from "./SentimentView";
-import { Avatar, Feeds, isSocial, LoadMore, PLATFORM_LABEL, SOCIAL_LABEL } from "./shared";
+import { AutoUpdate, Avatar, Feeds, isSocial, LoadMore, PLATFORM_LABEL, SOCIAL_LABEL } from "./shared";
 import { streamStore, type Tab } from "./stream-store";
 
 /** What the board shows: everything, one stream platform, or one social platform. */
@@ -34,7 +34,12 @@ const HEAT_STEPS = [10_000, 100_000, 500_000, 1_000_000, 2_000_000];
 
 function Stars({ lit }: { lit: number }) {
   return (
-    <div className="stars" role="img" aria-label={`Heat level ${lit} of 5`}>
+    <div
+      className="stars"
+      role="img"
+      aria-label={`Heat level ${lit} of 5`}
+      title="One star each at 10K, 100K, 500K, 1M and 2M reported viewers across found streams"
+    >
       {HEAT_STEPS.map((step, i) => (
         <svg key={step} viewBox="0 0 24 24" className={i < lit ? "star on" : "star"} aria-hidden="true">
           <path d="M12 1.6l3.1 6.7 7.3.9-5.4 5 1.4 7.2L12 17.8l-6.4 3.6L7 14.2l-5.4-5 7.3-.9z" />
@@ -166,7 +171,7 @@ function PostCard({ post, now }: { post: SocialPost; now: number }) {
         <span className="chip platform">{SOCIAL_LABEL[post.platform]}</span>
       </div>
       <p className="post-text">
-        {post.goingLive ? <span className="going-live">Going live</span> : null}
+        {post.goingLive ? <span className="going-live">Stream announcement</span> : null}
         {post.text}
       </p>
       {stats.length > 0 ? <div className="post-stats">{stats.join(" · ")}</div> : null}
@@ -205,7 +210,10 @@ function SocialRadar({
     <section className="radar" id="radar" aria-labelledby="radar-title">
       <div className="radar-head">
         <h2 id="radar-title">Social radar</h2>
-        <p>Posts about GTA VI streams on X, Reddit, Instagram and LinkedIn, newest first.</p>
+        <p>
+          Posts about GTA VI streams on X, Reddit, Instagram and LinkedIn. "Stream announcement" is a guess from the wording and
+          links, not proof someone is live.
+        </p>
       </div>
       <div className="chips" role="group" aria-label="Filter posts">
         <button type="button" aria-pressed={!isSocial(view)} onClick={() => onView("all")}>
@@ -218,7 +226,7 @@ function SocialRadar({
           </button>
         ))}
         <button type="button" className="toggle" aria-pressed={liveOnly} onClick={() => setLiveOnly(!liveOnly)}>
-          Going live only <span>{liveCount}</span>
+          Announcements only <span>{liveCount}</span>
         </button>
       </div>
       {viewsHint ? (
@@ -287,7 +295,7 @@ function onTabKey(event: KeyboardEvent<HTMLDivElement>) {
 const COLLAPSED_STREAMS = 24;
 
 export function StreamBoard() {
-  const { payload, loading, error, auto, now, loadingMore, moreError, tab } = useSyncExternalStore(
+  const { payload, loading, error, auto, now, loadingMore, moreError, tab, autoMore, nextAutoAt } = useSyncExternalStore(
     streamStore.subscribe,
     streamStore.getSnapshot,
     streamStore.getServerSnapshot,
@@ -341,6 +349,9 @@ export function StreamBoard() {
   const viewsHint = postSort === "views" && visiblePosts.some((p) => p.views === null);
   const statuses = new Map((payload?.sources ?? []).map((st) => [st.source, st]));
   const goingLive = posts.filter((p) => p.goingLive).length;
+  // One creator streaming on two platforms is one creator: match on the handle (or name) with punctuation stripped.
+  const creators = new Set(streams.map((s) => (s.handle ?? s.channel).toLowerCase().replace(/[^a-z0-9]/g, ""))).size;
+  const uncounted = streams.filter((s) => s.viewers === null).length;
 
   const top = streams.find((s) => s.viewers !== null) ?? null;
   const needsSetup = payload !== null && !payload.signedIn;
@@ -424,9 +435,16 @@ export function StreamBoard() {
       {needsSetup ? (
         <SignIn error={payload?.authError ?? null} />
       ) : tab === "reactions" ? (
-        <ReactionsView payload={payload} now={now} statuses={statuses} loadingMore={loadingMore} />
+        <ReactionsView
+          payload={payload}
+          now={now}
+          statuses={statuses}
+          loadingMore={loadingMore}
+          autoMore={autoMore}
+          nextAutoAt={nextAutoAt}
+        />
       ) : tab === "sentiment" ? (
-        <SentimentView payload={payload} now={now} />
+        <SentimentView payload={payload} now={now} statuses={statuses} />
       ) : (
         <div className="layout">
           <aside className={filtersOpen ? "menu open" : "menu"} aria-label="Filters">
@@ -499,13 +517,16 @@ export function StreamBoard() {
 
           <main className="results">
             <div className="stats">
-              <div className="stat">
-                <span className="stat-value">{payload ? streams.length : "--"}</span>
-                <span className="stat-label">Streamers live</span>
+              <div className="stat" title="Distinct creators among the streams found. Someone live on Twitch and Kick counts once.">
+                <span className="stat-value">{payload ? creators : "--"}</span>
+                <span className="stat-label">Creators live{payload ? ` · ${streams.length} streams` : ""}</span>
               </div>
-              <div className="stat">
+              <div
+                className="stat"
+                title="The sum of each found stream's reported count. Twitch rounds (576K), and a viewer watching two streams counts twice."
+              >
                 <span className="stat-value">{payload ? compactCount(totalViewers) : "--"}</span>
-                <span className="stat-label">Watching now</span>
+                <span className="stat-label">Reported viewers{uncounted ? ` · ${uncounted} without a count` : ""}</span>
               </div>
               <a
                 className="stat link"
@@ -515,12 +536,12 @@ export function StreamBoard() {
                 }}
               >
                 <span className="stat-value">{payload ? posts.length : "--"}</span>
-                <span className="stat-label">Social posts{payload ? ` · ${goingLive} live` : ""}</span>
+                <span className="stat-label">Social posts{payload ? ` · ${goingLive} announce streams` : ""}</span>
               </a>
               <div className="stat wide">
                 <span className="stat-value">{top ? top.channel : "--"}</span>
                 <span className="stat-label">
-                  Biggest room{top?.viewers ? ` · ${compactCount(top.viewers)} on ${PLATFORM_LABEL[top.platform]}` : ""}
+                  Largest room found{top?.viewers ? ` · ${compactCount(top.viewers)} on ${PLATFORM_LABEL[top.platform]}` : ""}
                 </span>
               </div>
             </div>
@@ -574,13 +595,16 @@ export function StreamBoard() {
                 onView={setView}
                 viewsHint={viewsHint}
                 footer={
-                  <LoadMore
-                    ids={isSocial(view) ? [view] : SOCIAL_PLATFORMS}
-                    statuses={statuses}
-                    loadingMore={loadingMore}
-                    noun={isSocial(view) ? `${SOCIAL_LABEL[view]} posts` : "posts"}
-                    endNote="That's every post these feeds return for this search."
-                  />
+                  <>
+                    <LoadMore
+                      ids={isSocial(view) ? [view] : SOCIAL_PLATFORMS}
+                      statuses={statuses}
+                      loadingMore={loadingMore}
+                      noun={isSocial(view) ? `${SOCIAL_LABEL[view]} posts` : "posts"}
+                      endNote="That's every post these feeds return for this search."
+                    />
+                    <AutoUpdate ids={SOCIAL_PLATFORMS} statuses={statuses} on={autoMore} nextAt={nextAutoAt} now={now} noun="social" />
+                  </>
                 }
               />
             ) : null}

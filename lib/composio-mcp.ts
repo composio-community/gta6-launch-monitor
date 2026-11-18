@@ -106,7 +106,16 @@ class SessionProvider implements OAuthClientProvider {
 
   saveTokens(tokens: StoredOAuthTokens) {
     // A refresh outside a request can't reach the cookie; the next request refreshes again.
-    if (hasSession()) updateSession((s) => ({ ...s, tokens, redirectUrl: this.redirect, lastError: null }));
+    if (!hasSession()) return;
+    // The ID token is only read for the name and email; keeping it would roughly double the cookie.
+    const { id_token: idToken, ...kept } = tokens as StoredOAuthTokens & { id_token?: unknown };
+    updateSession((s) => ({
+      ...s,
+      tokens: kept as StoredOAuthTokens,
+      account: idToken ? decodeIdToken(idToken) : s.account,
+      redirectUrl: this.redirect,
+      lastError: null,
+    }));
   }
 
   redirectToAuthorization(url: URL) {
@@ -223,7 +232,7 @@ function decodeIdToken(token: unknown): ComposioAccount | null {
 export function authStatus(): { signedIn: boolean; account: ComposioAccount | null; error: string | null; sid: string } {
   const s = session();
   const signedIn = Boolean(s.tokens && s.redirectUrl);
-  const account = signedIn ? decodeIdToken((s.tokens as Record<string, unknown>).id_token) : null;
+  const account = signedIn ? (s.account ?? null) : null;
   return { signedIn, account, error: s.lastError, sid: s.sid };
 }
 

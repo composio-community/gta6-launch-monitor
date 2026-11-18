@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { MOOD_LABEL, summarize, TOPIC_LABEL, verdict, type MoodSplit, type Timeline, type TimeBucket } from "@/lib/sentiment";
-import { MOODS, type Mood, type StreamsPayload, type Topic } from "@/lib/types";
+import { MOOD_LABEL, SMALL_SAMPLE, summarize, TOPIC_LABEL, verdict, type MoodSplit, type Timeline, type TimeBucket } from "@/lib/sentiment";
+import { ago } from "@/lib/format";
+import { MOODS, reactionSourceId, type Mood, type ReactionPlatform, type SourceId, type SourceStatus, type StreamsPayload, type Topic } from "@/lib/types";
 import { ReactionCard, ScoringNotice, signed } from "./ReactionsView";
 import { REACTION_LABEL } from "./shared";
 
@@ -112,6 +113,15 @@ const bucketLabel = (b: TimeBucket, ms: number) => {
   return `${clock(b.start, withMinutes)} – ${clock(b.end, withMinutes)}`;
 };
 
+/** How each reaction feed picks what it returns: platform comparisons only make sense next to this. */
+const SAMPLE_RULE: Record<ReactionPlatform, string> = {
+  x: "Posts since yesterday with 25+ likes",
+  reddit: "r/GTA6 front page",
+  youtube: "Top comments on today's most-watched uploads",
+  instagram: "Top #gta6 posts, any age",
+  linkedin: "Public posts matching “GTA 6”",
+};
+
 /** Round up to a clean, even axis value just above n (2, 4, 6, 8, 10, 12, 16, 20, 30, 40...), so its half is whole too. */
 function niceCeil(n: number): number {
   if (n <= 2) return 2;
@@ -180,7 +190,15 @@ function MoodColumns({ tl }: { tl: Timeline }) {
   );
 }
 
-export function SentimentView({ payload, now }: { payload: StreamsPayload | null; now: number }) {
+export function SentimentView({
+  payload,
+  now,
+  statuses,
+}: {
+  payload: StreamsPayload | null;
+  now: number;
+  statuses: Map<SourceId, SourceStatus>;
+}) {
   const [topic, setTopic] = useState<Topic | null>(null);
   const reactions = payload?.reactions ?? [];
   const loaded = payload ? payload.sections.includes("reactions") : false;
@@ -193,6 +211,7 @@ export function SentimentView({ payload, now }: { payload: StreamsPayload | null
   const topTopic = Math.max(1, ...sum.byTopic.map((t) => t.total));
   const tl = sum.timeline;
   const inWindow = tl.buckets.reduce((n, b) => n + b.total, 0);
+  const cov = sum.coverage;
 
   if (!loaded || sum.overall.total === 0) {
     return (
@@ -216,19 +235,24 @@ export function SentimentView({ payload, now }: { payload: StreamsPayload | null
       <section className="panel hero-panel" aria-labelledby="mood-title">
         <div className="hero">
           <p className="script">Street word</p>
-          <h2 id="mood-title" className="sr-only">
-            Overall mood
+          <h2 id="mood-title" className="hero-title">
+            Mood of {o.total} sampled reactions
           </h2>
-          <div className="hero-figure">{signed(o.net)}</div>
-          <div className="hero-verdict">{verdict(o.net)}</div>
-          <p className="hero-caption">Net mood: the share of positive reactions minus the share of negative ones, from -100 to +100.</p>
+          <p className="hero-caption">
+            {cov.counted} counted of {cov.loaded} loaded
+            {cov.offTopic ? ` · ${cov.offTopic} not about GTA VI, left out` : ""}
+            {cov.unscored ? ` · ${cov.unscored} not scored yet` : ""}.
+          </p>
+          <p className="hero-caption">
+            Each reaction counts once, whatever its likes. Moods come from an AI model reading each post, and haven't been checked
+            against human labels. Read this as the mood of what the feeds returned, not of everyone.
+          </p>
+          {o.total < SMALL_SAMPLE ? <p className="hero-warning">Small sample: a few posts move these numbers a lot.</p> : null}
         </div>
         <div className="hero-split">
+          <MoodBar split={o} />
+          <MoodLegend />
           <div className="hero-stats">
-            <div>
-              <span className="hero-stat">{o.total}</span>
-              <span className="stat-label">Reactions scored</span>
-            </div>
             <div>
               <span className="hero-stat">{fmtPct(positive(o), o.total)}</span>
               <span className="stat-label">Positive</span>
@@ -241,9 +265,11 @@ export function SentimentView({ payload, now }: { payload: StreamsPayload | null
               <span className="hero-stat">{fmtPct(negative(o), o.total)}</span>
               <span className="stat-label">Negative</span>
             </div>
+            <div title="Share positive minus share negative, -100 to +100. 50 positive and 50 negative score 0, the same as all neutral.">
+              <span className="hero-stat">{signed(o.net)}</span>
+              <span className="stat-label">Net · {verdict(o.net)}</span>
+            </div>
           </div>
-          <MoodBar split={o} />
-          <MoodLegend />
         </div>
       </section>
 
@@ -252,9 +278,14 @@ export function SentimentView({ payload, now }: { payload: StreamsPayload | null
           Mood over time
         </h2>
         <p className="panel-sub">
-          Reactions by when they were posted, {tl.bucketMs < 3_600_000 ? `${tl.bucketMs / 60_000} minutes` : `${tl.bucketMs / 3_600_000} hour${tl.bucketMs > 3_600_000 ? "s" : ""}`} per
-          column. Positive stack up, negative down, neutral sits across the line.
-          {tl.outside > 0 ? ` ${tl.outside} older reactions are left out.` : ""}
+          Counted reactions by the hour they were posted. Positive stack up, negative down, neutral sits across the line. This
+          shows what the feeds returned for each hour, so loading more pages can change it.
+        </p>
+        <p className="panel-sub coverage">
+          {inWindow} in the last 24 hours
+          {tl.approximate ? ` · ${tl.approximate} with approximate times (YouTube shows "3 hours ago")` : ""}
+          {tl.older ? ` · ${tl.older} older, left out` : ""}
+          {tl.untimed ? ` · ${tl.untimed} without a time, left out` : ""}
         </p>
         {inWindow >= 3 ? (
           <>
@@ -275,14 +306,23 @@ export function SentimentView({ payload, now }: { payload: StreamsPayload | null
           <h2 id="platform-title" className="panel-title">
             Mood by platform
           </h2>
-          <p className="panel-sub">Negative to the left of the line, positive to the right.</p>
+          <p className="panel-sub">
+            Negative to the left of the line, positive to the right. Each platform is sampled its own way, so compare with care.
+          </p>
           <ul className="diverging-list">
-            {platformRows.map((p) => (
+            {platformRows.map((p) => {
+              const fetched = statuses.get(reactionSourceId(p.platform))?.fetchedAt ?? null;
+              return (
               <li className="diverging-row" key={p.platform} data-platform={p.platform}>
                 <span className="drow-label">
-                  <i className="dot" aria-hidden="true" />
-                  {REACTION_LABEL[p.platform]}
-                  <small>{p.total}</small>
+                  <span className="drow-name">
+                    <i className="dot" aria-hidden="true" />
+                    {REACTION_LABEL[p.platform]}
+                  </span>
+                  <small className="drow-rule">
+                    {SAMPLE_RULE[p.platform]} · {p.total} counted{p.total < 15 ? " · small sample" : ""}
+                    {fetched ? ` · ${ago(fetched, now)}` : ""}
+                  </small>
                 </span>
                 <span className="drow-side neg">{fmtPct(negative(p), p.total)}</span>
                 <DivergingBar split={p} left={leftMax} right={rightMax} />
@@ -292,7 +332,8 @@ export function SentimentView({ payload, now }: { payload: StreamsPayload | null
                   {REACTION_LABEL[p.platform]}: {breakdown(p)}
                 </span>
               </li>
-            ))}
+              );
+            })}
           </ul>
           <MoodLegend />
           <MoodTable caption="Mood by platform" rows={platformRows.map((p) => ({ label: REACTION_LABEL[p.platform], split: p }))} />

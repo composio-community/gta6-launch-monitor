@@ -1,6 +1,7 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { deflateRawSync, inflateRawSync } from "node:zlib";
 import path from "node:path";
 import type { OAuthDiscoveryState, StoredOAuthClientInformation, StoredOAuthTokens } from "@modelcontextprotocol/client";
 
@@ -31,6 +32,8 @@ export interface AuthState {
   estimated: boolean;
   /** Last sign-in failure, shown until the next attempt. */
   lastError: string | null;
+  /** Name and email from the ID token, read once at sign-in so the token itself isn't kept. */
+  account?: { name: string | null; email: string | null } | null;
 }
 
 /** A sign-in that was started but not finished, keyed by its OAuth state. */
@@ -99,10 +102,15 @@ export function configError(): string | null {
   }
 }
 
+/**
+ * Compressed, then encrypted. Cookies for every localhost app share one
+ * request header, and Node rejects headers over 16KB (HTTP 431), so the
+ * session has to stay small.
+ */
 function seal(value: unknown): string {
   const iv = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm", key(), iv);
-  const body = Buffer.concat([cipher.update(JSON.stringify(value), "utf8"), cipher.final()]);
+  const body = Buffer.concat([cipher.update(deflateRawSync(Buffer.from(JSON.stringify(value), "utf8"))), cipher.final()]);
   return Buffer.concat([iv, cipher.getAuthTag(), body]).toString("base64url");
 }
 
@@ -113,7 +121,8 @@ function unseal<T>(sealed: string | undefined): T | null {
     const raw = Buffer.from(sealed, "base64url");
     const decipher = createDecipheriv("aes-256-gcm", key(), raw.subarray(0, 12));
     decipher.setAuthTag(raw.subarray(12, 28));
-    return JSON.parse(Buffer.concat([decipher.update(raw.subarray(28)), decipher.final()]).toString("utf8")) as T;
+    const plain = Buffer.concat([decipher.update(raw.subarray(28)), decipher.final()]);
+    return JSON.parse(inflateRawSync(plain).toString("utf8")) as T;
   } catch {
     return null;
   }

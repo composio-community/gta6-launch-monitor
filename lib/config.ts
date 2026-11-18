@@ -5,6 +5,12 @@ export const GAME = {
   twitchSlug: "grand-theft-auto-vi",
   kickCategoryUrl: "https://kick.com/category/grand-theft-auto-vi",
   youtubeQuery: "GTA 6 live",
+  /**
+   * The game named in a post's own text. X search also matches the author's
+   * name and handle, quoted posts and link previews, so X posts are kept only
+   * when their text matches. "#GTA6Live" counts; "GTA Vice City" and "GTA 60fps" don't.
+   */
+  mention: /(?<![a-z0-9])(gta[\s-]?6(?!\d)|gta[\s-]?vi\b|grand\s+theft\s+auto\s+(6|vi)\b)/i,
   /** X advanced search: posts announcing a GTA VI stream, no replies. */
   xQuery: `(GTA6 OR "GTA 6" OR "GTA VI") ("live now" OR "going live" OR "im live" OR "i'm live" OR twitch.tv OR kick.com) -filter:replies`,
   redditQuery: "GTA 6 live stream",

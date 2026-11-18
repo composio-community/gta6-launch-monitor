@@ -1,8 +1,9 @@
-// Writes the test fixtures in fixtures/: made-up channels, posts and comments in
+// Writes the fixtures in fixtures/: made-up channels, posts and comments in
 // the exact shapes the real tools return, so the tests run without anyone's
 // real data. Every name, post, link and number here is invented.
 // Usage: node scripts/make-demo-fixtures.ts
 import { writeFileSync } from "node:fs";
+import { GAME } from "../lib/config.ts";
 
 const OUT = new URL("../fixtures/", import.meta.url);
 const write = (name: string, data: unknown) =>
@@ -169,7 +170,8 @@ function xSearch(texts: string[], startMins: number, likesBase: number) {
           const id = `9000000000000${idOf(i + startMins, 6)}`;
           return {
             id,
-            text,
+            // The real query requires the game's name, and the parser drops posts without it.
+            text: GAME.mention.test(text) ? text : `${text} #GTA6`,
             url: `https://x.com/i/web/status/${id}`,
             authorName: name,
             authorUsername: slug(name),
@@ -370,4 +372,4 @@ const reactionSet = (n: number) => Array.from({ length: n }, () => pick(REACTION
   });
 }
 
-console.log("wrote test fixtures");
+console.log("wrote fixtures");

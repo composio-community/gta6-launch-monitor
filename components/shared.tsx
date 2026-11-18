@@ -12,7 +12,7 @@ import {
   type ScoringStatus,
   type SourceStatus,
 } from "@/lib/types";
-import { streamStore } from "./stream-store";
+import { AUTO_MORE_MS, streamStore } from "./stream-store";
 
 export const PLATFORM_LABEL: Record<Platform, string> = { twitch: "Twitch", kick: "Kick", youtube: "YouTube" };
 export const SOCIAL_LABEL: Record<SocialPlatform, string> = { x: "X", reddit: "Reddit", instagram: "Instagram", linkedin: "LinkedIn" };
@@ -124,6 +124,50 @@ export function LoadMore({
         </>
       )}
     </button>
+  );
+}
+
+/**
+ * The auto update switch: while on, the next page of every listed feed that
+ * has more loads every AUTO_MORE_MS. Says what it costs and when it runs next.
+ */
+export function AutoUpdate({
+  ids,
+  statuses,
+  on,
+  nextAt,
+  now,
+  noun,
+}: {
+  /** Feeds this switch covers; only those with another page count. */
+  ids: SourceId[];
+  statuses: Map<SourceId, SourceStatus>;
+  on: boolean;
+  nextAt: number | null;
+  now: number;
+  noun: string;
+}) {
+  const ready = ids.filter((id) => statuses.get(id)?.hasMore);
+  const cost = ready.reduce((sum, id) => sum + (statuses.get(id)?.moreCostUsd ?? 0), 0);
+  const secs = on && nextAt && now ? Math.max(0, Math.round((nextAt - now) / 1000)) : null;
+  const every = AUTO_MORE_MS >= 60_000 ? `${AUTO_MORE_MS / 60_000} min` : `${AUTO_MORE_MS / 1000}s`;
+  const note = !on
+    ? `Off. Use Load more to fetch the next page of ${noun}.`
+    : ready.length === 0
+      ? `On. Every ${noun} feed is fully loaded; nothing more to fetch.`
+      : `Loads the next page of ${ready.length} ${ready.length === 1 ? "feed" : "feeds"} every ${every}${cost > 0 ? `, about ${usd(cost)} a round` : ""}${secs !== null ? ` · next in ${secs}s` : ""}.`;
+  return (
+    <div className="auto-update">
+      <button type="button" role="switch" aria-checked={on} className="switch" onClick={() => streamStore.setAutoMore(!on)}>
+        <span className="switch-track" aria-hidden="true">
+          <span className="switch-thumb" />
+        </span>
+        Auto update
+      </button>
+      <span className="auto-note" aria-live="polite">
+        {note}
+      </span>
+    </div>
   );
 }
 
