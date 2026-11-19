@@ -14,7 +14,7 @@ import {
 import { parseInstagramHashtag, parseLinkedInSearch, parseRedditSearch, parseXSearch } from "./parse/social.ts";
 import { parseTwitchMarkdown } from "./parse/twitch.ts";
 import { findString, unwrapJson } from "./parse/util.ts";
-import { parseScrapeCreatorsYouTube } from "./parse/youtube.ts";
+import { parseEndedYouTube, parseScrapeCreatorsYouTube } from "./parse/youtube.ts";
 import { scoreSome, scoringStatus, withScores } from "./scoring.ts";
 import { configError, session } from "./session.ts";
 import type { LiveStream, Reaction, Section, SocialPost, SourceId, SourceStatus, StreamsPayload } from "./types.ts";
@@ -23,6 +23,8 @@ interface Parsed {
   streams: LiveStream[];
   posts: SocialPost[];
   reactions: Reaction[];
+  /** Stream ids the source reports as finished: removed right away, not after STREAM_KEEP_MS. */
+  ended?: string[];
 }
 
 /** How a source loads its next page. */
@@ -157,7 +159,7 @@ export const SOURCES: Source[] = [
     ttlMs: cacheTtlMs,
     args: () => ({ query: GAME.youtubeQuery, upload_date: "today", sort_by: "relevance" }),
     offload: { keys: ["lives", "videos", "next_cursor"] },
-    parse: (data) => streams(parseScrapeCreatorsYouTube(data)),
+    parse: (data) => ({ ...streams(parseScrapeCreatorsYouTube(data)), ended: parseEndedYouTube(data) }),
     more: { kind: "cursor", param: "next_cursor", read: cursorAt("next_cursor", "continuationToken") },
   },
   {
@@ -283,8 +285,11 @@ function xReactionQuery(): string {
 const SOURCE_BY_ID = new Map(SOURCES.map((s) => [s.id, s]));
 export const isSourceId = (id: unknown): id is SourceId => typeof id === "string" && SOURCE_BY_ID.has(id as SourceId);
 
-/** A stream that no refresh has returned for this long has probably ended. */
-const STREAM_KEEP_MS = 10 * 60 * 1000;
+/**
+ * A stream that no refresh has returned for this long has probably ended.
+ * Stream feeds refresh every 2 minutes, so this is about two missed refreshes.
+ */
+const STREAM_KEEP_MS = 5 * 60 * 1000;
 /** Cap per source, so paging can't grow memory without bound. */
 const MAX_ITEMS = 600;
 
@@ -414,6 +419,10 @@ function merge(entry: CacheEntry, parsed: Parsed) {
   }
   for (const p of parsed.posts) entry.posts.set(p.id, p);
   for (const r of parsed.reactions) entry.reactions.set(r.id, r);
+  for (const id of parsed.ended ?? []) {
+    entry.streams.delete(id);
+    entry.seen.delete(id);
+  }
 
   for (const [id, seenAt] of entry.seen) {
     if (now - seenAt > STREAM_KEEP_MS) {

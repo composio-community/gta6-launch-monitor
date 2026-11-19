@@ -14,30 +14,48 @@ function videoId(item: Rec): string | null {
 }
 
 /**
- * Parse a ScrapeCreators YouTube search response into live streams.
- * Live results arrive in a `lives` array; YouTube also mixes live videos into
- * `videos`, marked with a LIVE badge or an "N watching" view count.
+ * A finished stream. YouTube keeps these in the `lives` array, still typed
+ * "live", but they read "Streamed 16 minutes ago", have a length, and count
+ * total views instead of people watching.
  */
-export function parseScrapeCreatorsYouTube(data: unknown): LiveStream[] {
-  const body = unwrapJson(data);
-  const lives = findArray(body, "lives") ?? [];
-  const videos = findArray(body, "videos") ?? [];
-  const out = new Map<string, LiveStream>();
+function hasEnded(item: Rec, viewText: string): boolean {
+  return (
+    /^streamed\b/i.test(str(item.publishedTimeText) ?? "") ||
+    (typeof item.lengthSeconds === "number" && item.lengthSeconds > 0) ||
+    /\bviews?\b/i.test(viewText)
+  );
+}
 
-  const add = (raw: unknown, knownLive: boolean) => {
+/**
+ * Read a ScrapeCreators YouTube search response. A result is live only when
+ * YouTube shows a LIVE badge or an "N watching" count and nothing says it has
+ * ended; the `lives` array and the item's type are not enough on their own.
+ */
+function readYouTube(data: unknown): { live: LiveStream[]; ended: string[] } {
+  const body = unwrapJson(data);
+  const items = [...(findArray(body, "lives") ?? []), ...(findArray(body, "videos") ?? [])];
+  const out = new Map<string, LiveStream>();
+  const ended = new Set<string>();
+
+  for (const raw of items) {
     const item = rec(raw);
-    if (!item) return;
+    if (!item) continue;
     const id = videoId(item);
-    if (!id || out.has(id)) return;
+    if (!id || out.has(id)) continue;
 
     const viewText = str(item.viewCountText) ?? "";
     const badges = Array.isArray(item.badges) ? item.badges.map((b) => String(b)) : [];
-    const isLive = knownLive || /watching/i.test(viewText) || badges.some((b) => /^live/i.test(b));
-    if (!isLive) return;
+    const watching = /watching/i.test(viewText);
+    if (hasEnded(item, viewText)) {
+      ended.add(`youtube:${id}`);
+      continue;
+    }
+    if (!watching && !badges.some((b) => /^live/i.test(b))) continue;
 
     const channel = rec(item.channel);
     const handle = str(channel?.handle);
-    const viewers = typeof item.viewCountInt === "number" ? item.viewCountInt : parseCount(viewText);
+    // Only "N watching" is a count of people there now.
+    const viewers = watching ? (typeof item.viewCountInt === "number" ? item.viewCountInt : parseCount(viewText)) : null;
 
     out.set(id, {
       id: `youtube:${id}`,
@@ -52,9 +70,12 @@ export function parseScrapeCreatorsYouTube(data: unknown): LiveStream[] {
       language: null,
       tags: [],
     });
-  };
-
-  for (const item of lives) add(item, true);
-  for (const item of videos) add(item, false);
-  return [...out.values()];
+  }
+  return { live: [...out.values()], ended: [...ended] };
 }
+
+/** Streams that are live right now. */
+export const parseScrapeCreatorsYouTube = (data: unknown): LiveStream[] => readYouTube(data).live;
+
+/** Ids of streams the search reports as finished, so they can be dropped from the board at once. */
+export const parseEndedYouTube = (data: unknown): string[] => readYouTube(data).ended;
