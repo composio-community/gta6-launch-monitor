@@ -43,6 +43,12 @@ export const cacheTtlMs = () => numberFromEnv("STREAMS_TTL_SECONDS", 120, 20) * 
 /** Social posts move slower than viewer counts, so they are refreshed less often. */
 export const socialTtlMs = () => numberFromEnv("SOCIAL_TTL_SECONDS", 300, 60) * 1000;
 
+/**
+ * Posts and reactions older than this are dropped, and "Load more" stops once a
+ * whole page is older: this is a live monitor, not an archive.
+ */
+export const postMaxAgeMs = () => numberFromEnv("POST_MAX_AGE_HOURS", 24, 1) * 60 * 60 * 1000;
+
 /** A manual refresh may bypass the cache, but never more often than this. */
 export const FORCE_FLOOR_MS = 20_000;
 

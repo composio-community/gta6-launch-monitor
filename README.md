@@ -21,7 +21,7 @@ Click **Sign in with Composio**.
 
 1. Import the repo in Vercel. No build settings are needed.
 2. Add one environment variable, **`SESSION_SECRET`**: a long random string (at least 32 characters), e.g. from `openssl rand -base64 48`. It encrypts visitors' sign-in cookies. Without it the page says so and sign-in stays off.
-3. Optional: `INSTANT_BUDGET_USD`, `STREAMS_TTL_SECONDS` and `SOCIAL_TTL_SECONDS` (see `.env.example`).
+3. Optional: `INSTANT_BUDGET_USD`, `STREAMS_TTL_SECONDS`, `SOCIAL_TTL_SECONDS` and `POST_MAX_AGE_HOURS` (see `.env.example`).
 
 The app is built for serverless hosting:
 
@@ -42,9 +42,9 @@ Every call goes through Composio Connect's `COMPOSIO_MULTI_EXECUTE_TOOL` (`https
 | Kick | `FIRECRAWL_SCRAPE` of the GTA VI category | $0.0008 | every 2 min | next ~50 streams from the saved page in Composio's sandbox, free |
 | YouTube | `SCRAPECREATORS_SEARCH_YOUTUBE` ("GTA 6 live", today) | $0.001 | every 2 min | next page via cursor |
 | X | `GETANYAPI_TWITTER_SEARCH` (posts announcing streams) | $0.0005 | every 5 min | next page via cursor |
-| Reddit | `SCRAPECREATORS_SEARCH_REDDIT` | $0.001 | every 5 min | next page via cursor |
+| Reddit | `SCRAPECREATORS_SEARCH_REDDIT` (newest, last day) | $0.001 | every 5 min | next page via cursor |
 | Instagram | `GETANYAPI_INSTAGRAM_HASHTAG_RECENT_POSTS` (#gta6live) | $0.0019 | every 5 min | next page via cursor |
-| LinkedIn | `SCRAPECREATORS_SEARCH_LINKEDIN_POSTS` | $0.001 | every 5 min | next page via cursor, up to 11 pages |
+| LinkedIn | `SCRAPECREATORS_SEARCH_LINKEDIN_POSTS` (last day) | $0.001 | every 5 min | next page via cursor, up to 11 pages |
 
 ### Reactions
 
@@ -53,10 +53,12 @@ Every call goes through Composio Connect's `COMPOSIO_MULTI_EXECUTE_TOOL` (`https
 | X | `GETANYAPI_TWITTER_SEARCH`: GTA VI posts since yesterday with 25+ likes, no replies or reposts | $0.0005 | next page |
 | Reddit | `SCRAPECREATORS_LIST_REDDIT_SUBREDDIT_POSTS`: r/GTA6 | $0.001 | next page |
 | YouTube | `SCRAPECREATORS_SEARCH_YOUTUBE` finds today's most-watched GTA VI uploads, then `GETANYAPI_YOUTUBE_VIDEO_COMMENTS` reads the top comments of the first two | $0.001 + $0.0008 per video | comments on the next video |
-| Instagram | `GETANYAPI_INSTAGRAM_HASHTAG_TOP_POSTS`: #gta6 | $0.0019 | next page |
-| LinkedIn | `SCRAPECREATORS_SEARCH_LINKEDIN_POSTS`: "GTA 6" | $0.001 | next page |
+| Instagram | `GETANYAPI_INSTAGRAM_HASHTAG_RECENT_POSTS`: newest #gta6 posts | $0.0019 | next page |
+| LinkedIn | `SCRAPECREATORS_SEARCH_LINKEDIN_POSTS`: "GTA 6", last day | $0.001 | next page |
 
 Reaction feeds load only once the Reactions or Sentiment tab is opened, then refresh every 5 minutes.
+
+**Only the last 24 hours.** Social posts and reactions older than 24 hours are dropped (set `POST_MAX_AGE_HOURS` to change it), including ones that age out while the page is open, and "Load more" stops once a whole page is older than that. A YouTube stream counts as live only with a LIVE badge or an "N watching" count: YouTube's search keeps finished streams in its live results, and those are removed from the board as soon as a search reports them.
 
 **Scoring** uses `OPENAI_CREATE_DECISION` (model `gpt-6-luna`). It answers typed questions about one shared text, so a batch of 15 reactions goes in as a numbered list with two questions each: a 5-level sentiment score and a topic choice. A batch costs about $0.0007. Batches of 40 came back as "invalid decision response", so batches stay at 15, a failed batch is retried in halves, and a reaction gets at most two attempts. Scores describe public posts, so they are shared between visitors on the same instance.
 
@@ -120,7 +122,6 @@ scripts/make-demo-fixtures.ts          Generates fixtures/
 - Twitch rounds viewer counts ("576K"). Kick and YouTube are close to exact.
 - LinkedIn search covers Google-indexed public posts only, so it is mostly news and brands.
 - GetAnyAPI's providers time out at times (HTTP 502). The feed shows "Failed" and retries on its own.
-- Instagram and LinkedIn top posts can be days or months old, so they count toward overall mood but not the 24-hour line.
 
 ## Fonts
 

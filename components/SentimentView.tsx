@@ -115,11 +115,11 @@ const bucketLabel = (b: TimeBucket, ms: number) => {
 
 /** How each reaction feed picks what it returns: platform comparisons only make sense next to this. */
 const SAMPLE_RULE: Record<ReactionPlatform, string> = {
-  x: "Posts since yesterday with 25+ likes",
-  reddit: "r/GTA6 front page",
+  x: "Last 24 hours, posts with 25+ likes",
+  reddit: "r/GTA6 front page, last 24 hours",
   youtube: "Top comments on today's most-watched uploads",
-  instagram: "Top #gta6 posts, any age",
-  linkedin: "Public posts matching “GTA 6”",
+  instagram: "Newest #gta6 posts",
+  linkedin: "Public posts from the last day matching “GTA 6”",
 };
 
 /** Round up to a clean, even axis value just above n (2, 4, 6, 8, 10, 12, 16, 20, 30, 40...), so its half is whole too. */

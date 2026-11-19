@@ -1,5 +1,5 @@
 import { authStatus, SignInRequiredError } from "./composio-mcp.ts";
-import { cacheTtlMs, ERROR_BACKOFF_MS, FORCE_FLOOR_MS, GAME, socialTtlMs } from "./config.ts";
+import { cacheTtlMs, ERROR_BACKOFF_MS, FORCE_FLOOR_MS, GAME, postMaxAgeMs, socialTtlMs } from "./config.ts";
 import { BudgetExceededError, budgetStatus, describeError, readCardPage, runInstant, type CardPage, type OffloadSpec } from "./instant.ts";
 import { parseKickMarkdown } from "./parse/kick.ts";
 import {
@@ -179,7 +179,8 @@ export const SOURCES: Source[] = [
     tool: "SCRAPECREATORS_SEARCH_REDDIT",
     reserveUsd: 0.001,
     ttlMs: socialTtlMs,
-    args: () => ({ query: GAME.redditQuery, trim: true }),
+    // Newest first from the last day: the default relevance sort returns posts years old.
+    args: () => ({ query: GAME.redditQuery, sort: "new", timeframe: "day", trim: true }),
     offload: { keys: ["items", "next_cursor"] },
     parse: (data) => posts(parseRedditSearch(data)),
     more: { kind: "cursor", param: "next_cursor", read: cursorAt("next_cursor") },
@@ -201,7 +202,7 @@ export const SOURCES: Source[] = [
     tool: "SCRAPECREATORS_SEARCH_LINKEDIN_POSTS",
     reserveUsd: 0.001,
     ttlMs: socialTtlMs,
-    args: () => ({ query: GAME.linkedinQuery }),
+    args: () => ({ query: GAME.linkedinQuery, date_posted: "last-day" }),
     offload: { keys: ["items", "next_cursor"] },
     parse: (data) => posts(parseLinkedInSearch(data)),
     // The tool documents at most 11 pages.
@@ -255,7 +256,8 @@ export const SOURCES: Source[] = [
   {
     id: "react-instagram",
     section: "reactions",
-    tool: "GETANYAPI_INSTAGRAM_HASHTAG_TOP_POSTS",
+    // Newest first. The top-posts feed has no date filter and is mostly reels weeks or months old.
+    tool: "GETANYAPI_INSTAGRAM_HASHTAG_RECENT_POSTS",
     reserveUsd: 0.005,
     ttlMs: socialTtlMs,
     args: () => ({ hashtag: GAME.reactionHashtag, max_cost_usd: "0.005", response_max_items: 30 }),
@@ -269,7 +271,7 @@ export const SOURCES: Source[] = [
     tool: "SCRAPECREATORS_SEARCH_LINKEDIN_POSTS",
     reserveUsd: 0.001,
     ttlMs: socialTtlMs,
-    args: () => ({ query: GAME.reactionQuery }),
+    args: () => ({ query: GAME.reactionQuery, date_posted: "last-day" }),
     offload: { keys: ["items", "next_cursor"] },
     parse: (data) => reactions(parseLinkedInReactions(data)),
     more: { kind: "cursor", param: "next_cursor", read: cursorAt("next_cursor"), maxPages: 11 },
@@ -411,14 +413,28 @@ function withLock<T>(entry: CacheEntry, fn: () => Promise<T>): Promise<T> {
   return run;
 }
 
+/** Posted before the cutoff. Undated items are kept: there is no way to tell. */
+const tooOld = (createdAt: string | null, cutoff: number) => createdAt !== null && Date.parse(createdAt) < cutoff;
+
+/** Every post on a page is past the age limit: deeper pages will only be older, so stop paging. */
+function allTooOld(parsed: Parsed): boolean {
+  const items = [...parsed.posts, ...parsed.reactions];
+  const cutoff = Date.now() - postMaxAgeMs();
+  return items.length > 0 && items.every((i) => tooOld(i.createdAt, cutoff));
+}
+
 function merge(entry: CacheEntry, parsed: Parsed) {
   const now = Date.now();
+  const cutoff = now - postMaxAgeMs();
   for (const s of parsed.streams) {
     entry.streams.set(s.id, s);
     entry.seen.set(s.id, now);
   }
-  for (const p of parsed.posts) entry.posts.set(p.id, p);
-  for (const r of parsed.reactions) entry.reactions.set(r.id, r);
+  for (const p of parsed.posts) if (!tooOld(p.createdAt, cutoff)) entry.posts.set(p.id, p);
+  for (const r of parsed.reactions) if (!tooOld(r.createdAt, cutoff)) entry.reactions.set(r.id, r);
+  // And whatever has aged out since it was loaded.
+  for (const [id, p] of entry.posts) if (tooOld(p.createdAt, cutoff)) entry.posts.delete(id);
+  for (const [id, r] of entry.reactions) if (tooOld(r.createdAt, cutoff)) entry.reactions.delete(id);
   for (const id of parsed.ended ?? []) {
     entry.streams.delete(id);
     entry.seen.delete(id);
@@ -527,7 +543,7 @@ async function fetchFirstPage(source: Source, entry: CacheEntry): Promise<void> 
     if (more.kind === "cursor") {
       // Once deeper pages are loaded, keep following them instead of restarting at page 2.
       if (entry.pages <= 1) {
-        entry.cursor = more.read(result.data);
+        entry.cursor = allTooOld(parsed) ? null : more.read(result.data);
         entry.hasMore = entry.cursor !== null;
       }
     } else if (more.kind === "sandbox") {
@@ -562,11 +578,12 @@ async function fetchNextPage(source: Source, entry: CacheEntry): Promise<void> {
     if (more.kind === "cursor") {
       if (!entry.cursor) return;
       const result = await runInstant(source.tool, { ...source.args(), [more.param]: entry.cursor }, source.reserveUsd, source.offload);
-      merge(entry, source.parse(result.data));
+      const parsed = source.parse(result.data);
+      merge(entry, parsed);
       entry.pages += 1;
       const next = more.read(result.data);
-      // A cursor that comes back unchanged would loop forever.
-      entry.cursor = next && next !== entry.cursor ? next : null;
+      // A cursor that comes back unchanged would loop forever, and a page past the age limit means the rest is older still.
+      entry.cursor = next && next !== entry.cursor && !allTooOld(parsed) ? next : null;
       entry.hasMore = entry.cursor !== null && (more.maxPages === undefined || entry.pages < more.maxPages);
       entry.status = { ...entry.status, lastChargeUsd: result.chargeUsd, chargeEstimated: result.estimated, error: null };
     } else if (more.kind === "sandbox") {
